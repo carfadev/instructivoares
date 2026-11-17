@@ -113,14 +113,10 @@ tr.row:hover td{background:var(--soft)}
         <div class="card tile"><small>Puntaje promedio</small><strong id="tAvg">0 %</strong><span>de respuestas correctas</span></div>
         <div class="card tile"><small>Última evaluación</small><strong id="tLast" style="font-size:20px">—</strong><span id="tLastWho"></span></div>
       </div>
-      <div class="grid2">
-        <div class="card"><h3>Aciertos por pregunta</h3><div class="bars" id="qBars"></div></div>
-        <div class="card"><h3>Por sede</h3><div class="bars" id="sBars"></div></div>
-      </div>
+      <div class="card"><h3>Aciertos por pregunta</h3><div class="bars" id="qBars"></div></div>
       <div class="card">
         <div class="filters">
-          <input id="fText" type="search" placeholder="Buscar por nombre o cédula" aria-label="Buscar por nombre o cédula">
-          <select id="fSede" aria-label="Filtrar por sede"><option value="">Todas las sedes</option></select>
+          <input id="fText" type="search" placeholder="Buscar por nombre, cédula o cargo" aria-label="Buscar por nombre, cédula o cargo">
           <select id="fRes" aria-label="Filtrar por resultado"><option value="">Todos los resultados</option><option>Aprobado</option><option>No aprobado</option></select>
           <span class="count" id="count"></span>
         </div>
@@ -128,7 +124,7 @@ tr.row:hover td{background:var(--soft)}
           <table>
             <thead><tr>
               <th data-k="fecha" aria-sort="descending">Fecha</th><th data-k="nombre">Nombre</th><th data-k="cedula">Cédula</th>
-              <th data-k="sede">Sede</th><th data-k="cargo">Cargo</th><th data-k="turno">Turno</th><th data-k="intento">Intento</th>
+              <th data-k="cargo">Cargo</th><th data-k="intento">Intento</th>
               <th data-k="porcentaje">Puntaje</th><th data-k="resultado">Resultado</th><th>Acciones</th>
             </tr></thead>
             <tbody id="rows"></tbody>
@@ -164,7 +160,7 @@ async function load() {
     data = j.resultados;
     $('login').hidden = true; $('app').hidden = false; ['bRefresh', 'bExcel', 'bOut'].forEach((id) => { $(id).hidden = false; });
     try { sessionStorage.setItem('ares-admin', clave); } catch (e) {}
-    fillSedes(); render();
+    render();
   } catch (e) {
     $('login').hidden = false; $('app').hidden = true;
     $('loginErr').textContent = e.status === 401 ? 'Clave incorrecta.' : e.message;
@@ -174,13 +170,9 @@ $('login').addEventListener('submit', (e) => { e.preventDefault(); clave = $('pw
 $('bRefresh').addEventListener('click', load);
 $('bOut').addEventListener('click', () => { clave = ''; try { sessionStorage.removeItem('ares-admin'); } catch (e) {} location.reload(); });
 
-function fillSedes() {
-  const cur = $('fSede').value, sedes = [...new Set(data.map((d) => d.sede).filter(Boolean))].sort();
-  $('fSede').innerHTML = '<option value="">Todas las sedes</option>' + sedes.map((s) => '<option' + (s === cur ? ' selected' : '') + '>' + esc(s) + '</option>').join('');
-}
 function filtered() {
-  const q = $('fText').value.trim().toLowerCase(), s = $('fSede').value, r = $('fRes').value;
-  return data.filter((d) => (!q || (d.nombre || '').toLowerCase().includes(q) || String(d.cedula).includes(q)) && (!s || d.sede === s) && (!r || d.resultado === r))
+  const q = $('fText').value.trim().toLowerCase(), r = $('fRes').value;
+  return data.filter((d) => (!q || (d.nombre || '').toLowerCase().includes(q) || (d.cargo || '').toLowerCase().includes(q) || String(d.cedula).includes(q)) && (!r || d.resultado === r))
     .sort((a, b) => { const x = a[sortK], y = b[sortK]; return (typeof x === 'number' ? x - y : String(x || '').localeCompare(String(y || ''), 'es')) * sortDir; });
 }
 function bars(el, items) {
@@ -201,22 +193,19 @@ function render() {
   const qs = {};
   list.forEach((d) => (d.respuestas || []).forEach((r) => { const k = r.n; qs[k] = qs[k] || { ok: 0, all: 0, q: r.pregunta }; qs[k].all++; if (r.correcta) qs[k].ok++; }));
   bars($('qBars'), Object.keys(qs).sort((a, b) => a - b).map((k) => ({ label: 'P' + k, p: qs[k].ok / qs[k].all, sub: qs[k].q })));
-  const ss = {};
-  list.forEach((d) => { const k = d.sede || 'Sin sede'; ss[k] = ss[k] || { ok: 0, all: 0 }; ss[k].all++; if (d.resultado === 'Aprobado') ss[k].ok++; });
-  bars($('sBars'), Object.keys(ss).sort().map((k) => ({ label: '', p: ss[k].ok / ss[k].all, sub: k + ' · ' + ss[k].ok + ' de ' + ss[k].all + ' aprobados' })));
   // tabla
   $('count').textContent = n + ' de ' + data.length + ' registros';
   document.querySelectorAll('th[data-k]').forEach((th) => th.setAttribute('aria-sort', th.dataset.k === sortK ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'));
   $('rows').innerHTML = n ? list.map((d) => {
     const ok = d.resultado === 'Aprobado';
-    let h = '<tr class="row"><td class="num">' + esc(fmt(d.fecha)) + '</td><td>' + esc(d.nombre) + '</td><td class="num">' + esc(d.cedula) + '</td><td>' + esc(d.sede) + '</td><td>' + esc(d.cargo) + '</td><td>' + esc(d.turno) + '</td><td class="num">' + esc(d.intento) + '</td>' +
+    let h = '<tr class="row"><td class="num">' + esc(fmt(d.fecha)) + '</td><td>' + esc(d.nombre) + '</td><td class="num">' + esc(d.cedula) + '</td><td>' + esc(d.cargo) + '</td><td class="num">' + esc(d.intento) + '</td>' +
       '<td class="num">' + esc(d.puntaje) + '/' + esc(d.total) + ' (' + esc(d.porcentaje) + ' %)</td><td><span class="pill ' + (ok ? 'ok' : 'bad') + '">' + esc(d.resultado) + '</span></td>' +
       '<td style="white-space:nowrap"><button class="lnk" type="button" data-ver="' + esc(d.id) + '" aria-expanded="' + open.has(d.id) + '">' + (open.has(d.id) ? 'Ocultar' : 'Ver respuestas') + '</button><button class="lnk del" type="button" data-del="' + esc(d.id) + '">Eliminar</button></td></tr>';
-    if (open.has(d.id)) h += '<tr class="detail"><td colspan="10"><div class="answers">' + (d.respuestas || []).map((r) => '<div class="ans"><span class="m ' + (r.correcta ? 'ok' : 'bad') + '">' + (r.correcta ? '✔' : '✘') + '</span><div><b>P' + esc(r.n) + '.</b> ' + esc(r.pregunta) + '<small>Respondió: ' + esc(r.elegida) + '</small></div></div>').join('') + '<p class="note">Duración: ' + esc(d.duracionSeg) + ' s</p></div></td></tr>';
+    if (open.has(d.id)) h += '<tr class="detail"><td colspan="8"><div class="answers">' + (d.respuestas || []).map((r) => '<div class="ans"><span class="m ' + (r.correcta ? 'ok' : 'bad') + '">' + (r.correcta ? '✔' : '✘') + '</span><div><b>P' + esc(r.n) + '.</b> ' + esc(r.pregunta) + '<small>Respondió: ' + esc(r.elegida) + '</small></div></div>').join('') + '<p class="note">Duración: ' + esc(d.duracionSeg) + ' s</p></div></td></tr>';
     return h;
-  }).join('') : '<tr><td colspan="10" class="empty">' + (data.length ? 'Ningún registro coincide con los filtros.' : 'Todavía no hay evaluaciones registradas.') + '</td></tr>';
+  }).join('') : '<tr><td colspan="8" class="empty">' + (data.length ? 'Ningún registro coincide con los filtros.' : 'Todavía no hay evaluaciones registradas.') + '</td></tr>';
 }
-['fText', 'fSede', 'fRes'].forEach((id) => $(id).addEventListener('input', render));
+['fText', 'fRes'].forEach((id) => $(id).addEventListener('input', render));
 document.querySelectorAll('th[data-k]').forEach((th) => th.addEventListener('click', () => { const k = th.dataset.k; sortDir = sortK === k ? -sortDir : (k === 'fecha' ? -1 : 1); sortK = k; render(); }));
 $('rows').addEventListener('click', (e) => {
   const v = e.target.closest('[data-ver]'), d = e.target.closest('[data-del]');
@@ -233,9 +222,9 @@ function alertBox(msg) { const b = document.createElement('div'); b.className = 
 // Excel con dos hojas: Resultados (una fila por evaluación) y Detalle (una fila por pregunta)
 $('bExcel').addEventListener('click', () => {
   const list = filtered(), maxQ = Math.max(0, ...list.map((d) => (d.respuestas || []).length));
-  const res = list.map((d) => { const o = { 'Fecha': fmt(d.fecha), 'Nombre completo': d.nombre, 'Cédula': String(d.cedula), 'Sede / bodega': d.sede, 'Cargo': d.cargo, 'Turno': d.turno, 'Intento': d.intento, 'Puntaje': d.puntaje, 'Total': d.total, '%': d.porcentaje, 'Resultado': d.resultado, 'Duración (s)': d.duracionSeg };
+  const res = list.map((d) => { const o = { 'Fecha': fmt(d.fecha), 'Nombre completo': d.nombre, 'Cédula': String(d.cedula), 'Cargo': d.cargo, 'Intento': d.intento, 'Puntaje': d.puntaje, 'Total': d.total, '%': d.porcentaje, 'Resultado': d.resultado, 'Duración (s)': d.duracionSeg };
     for (let i = 0; i < maxQ; i++) { const r = (d.respuestas || [])[i]; o['P' + (i + 1)] = r ? r.elegida + (r.correcta ? ' ✔' : ' ✘') : ''; } return o; });
-  const det = []; list.forEach((d) => (d.respuestas || []).forEach((r) => det.push({ 'Fecha': fmt(d.fecha), 'Cédula': String(d.cedula), 'Nombre completo': d.nombre, 'Sede / bodega': d.sede, 'Intento': d.intento, 'N.º': r.n, 'Pregunta': r.pregunta, 'Respuesta elegida': r.elegida, '¿Correcta?': r.correcta ? 'Sí' : 'No' })));
+  const det = []; list.forEach((d) => (d.respuestas || []).forEach((r) => det.push({ 'Fecha': fmt(d.fecha), 'Cédula': String(d.cedula), 'Nombre completo': d.nombre, 'Cargo': d.cargo, 'Intento': d.intento, 'N.º': r.n, 'Pregunta': r.pregunta, 'Respuesta elegida': r.elegida, '¿Correcta?': r.correcta ? 'Sí' : 'No' })));
   const name = 'resultados-evaluacion-ares-' + new Date().toISOString().slice(0, 10);
   if (window.XLSX) {
     const wb = XLSX.utils.book_new();

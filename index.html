@@ -294,10 +294,8 @@ const CONFIG = {
   registro: {
     url: '/api/resultado',
     aprobacion: 0.8,
-    sedes: ['Zona Sabana', 'Zona Bogotá', 'Medellín', 'Zona Franca del Pacífico', 'Otra'],
     cargos: ['Vigilante', 'Asistente de seguridad', 'Supervisor', 'Otro'],
-    turnos: ['Diurno', 'Nocturno', 'Rotativo'],
-    autorizacion: 'Autorizo a Representaciones del Mundo S.A.S. para tratar mis datos personales (nombre, cédula, sede, cargo, turno y resultados) con el fin de registrar y hacer seguimiento a esta capacitación, conforme a la Ley 1581 de 2012 y su política de tratamiento de datos.'
+    autorizacion: 'Autorizo a Representaciones del Mundo S.A.S. para tratar mis datos personales (nombre, cédula, cargo y resultados) con el fin de registrar y hacer seguimiento a esta capacitación, conforme a la Ley 1581 de 2012 y su política de tratamiento de datos.'
   },
 
   quiz: [
@@ -642,14 +640,11 @@ function closeQuiz() { document.body.classList.remove('quizmode'); QP.hidden = t
 function showQuiz() { if (!persona) showRegistro(); else startQuiz(); }
 
 function showRegistro() {
-  const opts = (arr) => '<option value="">Seleccione…</option>' + arr.map((s) => '<option>' + esc(s) + '</option>').join('');
   qOpen('<div class="qnum">EVALUACIÓN · DATOS DEL PARTICIPANTE</div><p class="qtext">Antes de empezar, registre sus datos.</p>' +
     '<form id="regForm" class="reg" novalidate>' +
     field('rNombre', 'Nombre completo', '<input id="rNombre" autocomplete="name" maxlength="80">', true) +
     field('rCedula', 'Número de cédula', '<input id="rCedula" inputmode="numeric" maxlength="15">') +
-    field('rSede', 'Sede / bodega', '<select id="rSede">' + opts(REG.sedes) + '</select>') +
-    field('rCargo', 'Cargo', '<select id="rCargo">' + opts(REG.cargos) + '</select>') +
-    field('rTurno', 'Turno', '<select id="rTurno">' + opts(REG.turnos) + '</select>') +
+    field('rCargo', 'Cargo', '<input id="rCargo" maxlength="60" autocomplete="organization-title">') +
     '<label class="consent"><input type="checkbox" id="rOk"><span>' + esc(REG.autorizacion) + '</span></label>' +
     '<p class="err" id="rErr" role="alert"></p>' +
     '<div class="qact"><button class="big" type="submit">Empezar evaluación ▶</button><button class="big ghost" type="button" id="rBack">Volver al inicio</button></div></form>', 'present');
@@ -659,15 +654,18 @@ function showRegistro() {
     e.preventDefault();
     const v = (id) => $(id).value.trim();
     const nombre = v('rNombre').replace(/\s+/g, ' '), cedula = v('rCedula').replace(/[.\s-]/g, '');
+    const cedulaValida = /^[0-9]{6,10}$/.test(cedula) &&
+      !/^(\d)\1+$/.test(cedula) &&
+      !/^0123456789$|^1234567890$|^9876543210$/.test(cedula);
     const checks = [['rNombre', nombre.length >= 5 && nombre.includes(' '), 'Escriba su nombre completo (nombre y apellido).'],
-      ['rCedula', /^\d{5,11}$/.test(cedula), 'La cédula debe tener solo números (entre 5 y 11 dígitos).'],
-      ['rSede', !!v('rSede'), 'Seleccione la sede.'], ['rCargo', !!v('rCargo'), 'Seleccione el cargo.'], ['rTurno', !!v('rTurno'), 'Seleccione el turno.']];
+      ['rCedula', cedulaValida, 'Ingrese una cédula válida con solo números (entre 6 y 10 dígitos).'],
+      ['rCargo', v('rCargo').length >= 3, 'Ingrese el cargo.']];
     let msg = '';
     checks.forEach(([id, ok, m]) => { $(id).setAttribute('aria-invalid', String(!ok)); if (!ok && !msg) msg = m; });
     if (!msg && !$('rOk').checked) msg = 'Debe aceptar la autorización de tratamiento de datos para continuar.';
     $('rErr').textContent = msg;
     if (msg) { const bad = checks.find((c) => !c[1]); if (bad) $(bad[0]).focus(); return; }
-    persona = { nombre, cedula, sede: v('rSede'), cargo: v('rCargo'), turno: v('rTurno') };
+    persona = { nombre, cedula, cargo: v('rCargo') };
     intento = 0;
     startQuiz();
   });
@@ -680,7 +678,7 @@ function drawQ() {
   const Q = CONFIG.quiz;
   if (qi >= Q.length) return finishQuiz();
   const q = Q[qi];
-  qOpen('<p class="who">' + esc(persona.nombre) + ' · ' + esc(persona.sede) + '</p><div class="qnum">PREGUNTA ' + (qi + 1) + ' DE ' + Q.length + '</div><p class="qtext">' + esc(q.q) + '</p><div class="opts">' +
+  qOpen('<p class="who">' + esc(persona.nombre) + ' · ' + esc(persona.cargo) + '</p><div class="qnum">PREGUNTA ' + (qi + 1) + ' DE ' + Q.length + '</div><p class="qtext">' + esc(q.q) + '</p><div class="opts">' +
     q.o.map((o, k) => '<button class="opt" type="button" data-k="' + k + '"><b>' + 'ABCD'[k] + '</b>' + esc(o) + '</button>').join('') + '</div><div class="feedback" id="fb"></div>', 'think');
   QP.querySelectorAll('.opt').forEach((btn) => btn.addEventListener('click', () => {
     const k = +btn.dataset.k, right = k === q.c;

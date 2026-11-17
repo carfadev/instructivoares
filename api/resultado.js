@@ -8,8 +8,13 @@ module.exports = async (req, res) => {
   try {
     let d = req.body;
     if (typeof d === 'string') d = JSON.parse(d || '{}');
-    const cedula = txt(d && d.cedula, 15).replace(/\D/g, '');
-    if (!d || txt(d.nombre, 80).length < 5 || !/^\d{5,11}$/.test(cedula)) {
+    const cedulaTexto = txt(d && d.cedula, 15);
+    const cedula = cedulaTexto.replace(/[.\s-]/g, '');
+    const cedulaValida = /^[0-9]{6,10}$/.test(cedula) &&
+      !/^(\d)\1+$/.test(cedula) &&
+      !/^0123456789$|^1234567890$|^9876543210$/.test(cedula);
+    if (!d || txt(d.nombre, 80).length < 5 || !txt(d.nombre, 80).includes(' ') ||
+        !cedulaValida || txt(d.cargo, 60).length < 3) {
       return res.status(400).json({ ok: false, error: 'Datos del participante incompletos' });
     }
     const respuestas = (Array.isArray(d.respuestas) ? d.respuestas : []).slice(0, 50).map((r) => ({
@@ -19,7 +24,7 @@ module.exports = async (req, res) => {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
       recibido: new Date().toISOString(),
       fecha: txt(d.fecha, 40), nombre: txt(d.nombre, 80), cedula,
-      sede: txt(d.sede, 60), cargo: txt(d.cargo, 60), turno: txt(d.turno, 40),
+      cargo: txt(d.cargo, 60),
       intento: num(d.intento) || 1, puntaje: num(d.puntaje), total: num(d.total) || respuestas.length,
       porcentaje: num(d.porcentaje), resultado: txt(d.resultado, 20), duracionSeg: num(d.duracionSeg),
       respuestas,
