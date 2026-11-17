@@ -1,10 +1,29 @@
-// Conexión con la base de datos Redis que se crea desde el panel de Vercel (Storage → Upstash for Redis).
-// Vercel agrega solas las variables KV_REST_API_URL y KV_REST_API_TOKEN (o UPSTASH_REDIS_REST_URL / _TOKEN).
+// Conexión compatible con REDIS_URL (redis:// o rediss://) y con las variables REST de Upstash.
+const REDIS_URL = process.env.REDIS_URL;
 const URL_DB = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const TOKEN_DB = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 const KEY = 'ares:resultados';
 
+let clienteRedis;
+
+function getRedisClient() {
+  if (!clienteRedis) {
+    const Redis = require('ioredis');
+    clienteRedis = new Redis(REDIS_URL, {
+      maxRetriesPerRequest: 1,
+      lazyConnect: true,
+      enableReadyCheck: true,
+    });
+  }
+  return clienteRedis;
+}
+
 async function redis(...cmd) {
+  if (REDIS_URL) {
+    const cliente = getRedisClient();
+    if (cliente.status === 'wait') await cliente.connect();
+    return cliente.call(...cmd.map(String));
+  }
   if (!URL_DB || !TOKEN_DB) throw new Error('SIN_BASE');
   const r = await fetch(URL_DB, {
     method: 'POST',

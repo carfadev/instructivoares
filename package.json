@@ -1,0 +1,7 @@
+{
+  "name": "capacitacion-ares",
+  "private": true,
+  "dependencies": {
+    "ioredis": "^5.8.2"
+  }
+}
