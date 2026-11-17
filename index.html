@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capacitación ARES – Seguridad Repremundo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* Capacitación interactiva ARES: escenario 16:9 escalado, mascota a la derecha, subtítulos y controles debajo. */
+:root{
+  --ground:#EEF3F8; --navy:#1C2E4F; --ink:#14202E; --accent:#EE7A1E; --paper:#FAFCFE; --line:#D5DEE9;
+  --muted:#5B6B80; --ok:#1F8A5B; --bad:#C2412D;
+  --wall:color-mix(in srgb, var(--ground) 86%, var(--navy)); --floor:color-mix(in srgb, var(--ground) 78%, var(--navy));
+  --frame:color-mix(in srgb, var(--navy) 70%, var(--ink)); --mon:color-mix(in srgb, var(--navy) 88%, var(--ground));
+  --monlit:color-mix(in srgb, var(--navy) 45%, var(--ground)); --glow:color-mix(in srgb, var(--accent) 30%, transparent);
+  --card1:color-mix(in srgb, var(--accent) 42%, var(--ground)); --card2:color-mix(in srgb, var(--accent) 62%, var(--navy));
+  --font:"Nunito", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--ground);color:var(--ink);font-family:var(--font);display:flex;flex-direction:column;align-items:center}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.app{width:100%;max-width:1280px;padding:12px 16px 16px;display:flex;flex-direction:column;gap:10px;flex:1}
+/* barra superior */
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;line-height:1.1;margin-right:auto}
+.brand b{font-size:13px;letter-spacing:.14em;color:var(--accent);font-weight:900}
+.brand span{font-size:20px;font-weight:900;color:var(--navy)}
+.tbtn{border:1.5px solid var(--line);background:var(--paper);color:var(--navy);border-radius:999px;padding:8px 14px;font-size:15px;font-weight:800}
+.tbtn:hover{border-color:var(--navy)}
+.prog{display:flex;gap:4px;width:100%}
+.prog button{flex:1;height:8px;border:0;border-radius:4px;background:var(--line);padding:0}
+.prog button.done{background:color-mix(in srgb, var(--navy) 55%, var(--ground))}
+.prog button.cur{background:var(--accent)}
+/* escenario */
+.stagewrap{position:relative;width:100%;aspect-ratio:16/9;border-radius:18px;overflow:hidden;background:var(--ground);box-shadow:0 10px 30px rgba(20,32,46,.12)}
+.stage{position:absolute;left:0;top:0;width:1600px;height:900px;transform-origin:0 0;overflow:hidden}
+.scene{position:absolute;inset:0}
+.layer{position:absolute;inset:0}
+.art{position:absolute;inset:0;width:100%;height:100%}
+/* subtítulos y controles */
+.caption{min-height:84px;background:var(--navy);color:#fff;border-radius:14px;padding:14px 20px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:clamp(17px,2.1vw,24px);font-weight:700;line-height:1.35;border-top:5px solid var(--accent)}
+.caption p{margin:0;max-width:62ch;transition:opacity .25s}
+.ctrls{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+.cbtn{border:0;border-radius:12px;padding:12px 18px;font-size:16px;font-weight:800;background:var(--paper);color:var(--navy);box-shadow:0 2px 0 var(--line)}
+.cbtn.main{background:var(--accent);color:#fff;min-width:150px}
+.cbtn:disabled{opacity:.4;cursor:default}
+.cbtn.pulse{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 8px var(--glow)}}
+.auto{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--muted)}
+.auto input{width:18px;height:18px;accent-color:var(--accent)}
+.hint{font-size:13px;color:var(--muted);text-align:center}
+/* piezas del escenario */
+.kicker{font-size:26px;font-weight:900;letter-spacing:.14em;color:var(--accent);margin:0}
+.h{font-size:72px;line-height:1.05;font-weight:900;color:var(--navy);margin:0;text-wrap:balance}
+.words{position:absolute;display:flex;flex-direction:column;gap:12px}
+.card{position:absolute;background:var(--paper);border-radius:26px;box-shadow:0 16px 36px rgba(20,32,46,.12)}
+.chip{position:absolute;padding:12px 24px 12px 20px;border-radius:40px;background:var(--paper);color:var(--navy);font-size:30px;font-weight:800;line-height:1.2;box-shadow:0 10px 26px rgba(20,32,46,.16);max-width:520px;display:flex;align-items:center;gap:12px}
+.dot{flex:none;width:15px;height:15px;border-radius:50%;background:var(--accent)}
+.hl{position:absolute;pointer-events:none;border:5px solid var(--accent);border-radius:16px;box-shadow:0 0 0 9px var(--glow)}
+.fx{opacity:0;transform:translateY(22px);transition:opacity .45s ease,transform .55s cubic-bezier(.2,.9,.3,1.3)}
+.fx.l{transform:translateX(-36px)}
+.fx.in{opacity:1;transform:none}
+.dim{opacity:.5!important}
+.phone{position:absolute;background:var(--ink);border-radius:54px;padding:14px;box-shadow:0 36px 70px rgba(20,32,46,.25)}
+.screen{position:relative;overflow:hidden;border-radius:40px;background:#fff}
+.roll{position:absolute;left:0;top:0;transition:transform .9s cubic-bezier(.45,0,.2,1)}
+.roll img,.shot img{display:block}
+.shot{position:absolute;filter:drop-shadow(0 26px 36px rgba(20,32,46,.22))}
+/* mascota */
+.mascot{position:absolute;left:1340px;bottom:-40px;width:0;height:0}
+.mbody{position:absolute;left:0;bottom:0;animation:bob 3.2s ease-in-out infinite;transform-origin:0 100%}
+.mbody img{position:absolute;bottom:0;left:0;transform:translateX(-50%) scale(.97);opacity:0;transition:opacity .3s ease,transform .35s cubic-bezier(.2,.9,.3,1.4)}
+.mbody img.on{opacity:1;transform:translateX(-50%) scale(1)}
+.mshadow{position:absolute;left:-220px;width:440px;bottom:-24px;height:56px;border-radius:50%;background:radial-gradient(closest-side, rgba(0,0,0,.16), transparent)}
+.mascot.waving .mbody{animation:wave .6s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-6px) rotate(.6deg)}}
+@keyframes wave{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2.5deg)}}
+.lift{animation:lift 9s ease-in-out infinite}
+@keyframes lift{0%{transform:translate(500px,382px)}38%,50%{transform:translate(728px,382px)}92%,100%{transform:translate(500px,382px)}}
+.load{animation:load 9s step-end infinite}
+@keyframes load{0%{opacity:1}42%{opacity:0}93%{opacity:1}}
+.newbox{animation:newbox 9s step-end infinite}
+@keyframes newbox{0%{opacity:0}42%{opacity:1}93%{opacity:0}}
+.rec{animation:rec 2s ease-in-out infinite}
+@keyframes rec{50%{opacity:.3}}
+.conf{position:absolute;top:-30px;width:16px;height:10px;border-radius:2px;animation:fall linear infinite}
+@keyframes fall{to{transform:translateY(980px) rotate(540deg)}}
+/* menú y cuestionario */
+.view{position:absolute;inset:0}
+.menu-btns{position:absolute;left:96px;top:470px;display:flex;flex-direction:column;gap:16px;width:760px}
+.big{border:0;border-radius:20px;background:var(--accent);color:#fff;font-size:36px;font-weight:900;padding:22px 34px;text-align:left;box-shadow:0 10px 24px var(--glow)}
+.mods{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.mod{border:2px solid var(--line);border-radius:18px;background:var(--paper);color:var(--navy);font-size:26px;font-weight:800;padding:16px 20px;text-align:left;display:flex;gap:14px;align-items:center}
+.mod:hover,.opt:hover:not(:disabled){border-color:var(--navy)}
+.mod i{font-style:normal;flex:none;width:44px;height:44px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px}
+.quiz{position:absolute;left:80px;top:60px;width:1040px}
+.qnum{font-size:24px;font-weight:900;letter-spacing:.12em;color:var(--accent)}
+.qtext{font-size:40px;font-weight:900;color:var(--navy);line-height:1.15;margin:12px 0 26px;text-wrap:balance}
+.opts{display:flex;flex-direction:column;gap:14px}
+.opt{border:2.5px solid var(--line);background:var(--paper);border-radius:18px;padding:12px 22px;font-size:26px;font-weight:700;color:var(--ink);text-align:left;display:flex;gap:16px;align-items:center}
+.opt b{flex:none;width:44px;height:44px;border-radius:50%;background:var(--ground);color:var(--navy);display:flex;align-items:center;justify-content:center}
+.opt.ok{border-color:var(--ok);background:color-mix(in srgb, var(--ok) 10%, var(--paper))}
+.opt.ok b{background:var(--ok);color:#fff}
+.opt.bad{border-color:var(--bad);background:color-mix(in srgb, var(--bad) 8%, var(--paper))}
+.opt.bad b{background:var(--bad);color:#fff}
+.feedback{margin-top:18px;font-size:24px;font-weight:700;color:var(--ink);line-height:1.3;min-height:74px}
+.feedback strong{color:var(--navy)}
+.score{font-size:180px;font-weight:900;color:var(--navy);line-height:1}
+/* evaluación fuera del escenario (se adapta al celular) */
+body.quizmode .stagewrap, body.quizmode .caption, body.quizmode .ctrls, body.quizmode .hint, body.quizmode .prog{display:none}
+.qpanel{background:var(--paper);border-radius:18px;box-shadow:0 10px 30px rgba(20,32,46,.12);padding:clamp(18px,4vw,40px);display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:28px;align-items:start}
+.qpanel[hidden]{display:none}
+.qmasc img{width:100%;display:block}
+.qpanel .qnum{font-size:14px}
+.qpanel .qtext{font-size:clamp(21px,3vw,30px);margin:8px 0 20px}
+.qpanel .opts{gap:10px}
+.qpanel .opt{font-size:clamp(16px,2.1vw,19px);padding:12px 16px;border-width:2px;border-radius:14px}
+.qpanel .opt b{width:32px;height:32px;font-size:15px}
+.qpanel .feedback{font-size:17px;min-height:0;margin-top:16px}
+.qpanel .score{font-size:clamp(60px,10vw,104px)}
+.qpanel .big{font-size:18px;padding:14px 22px;border-radius:14px;box-shadow:none}
+.qpanel .big.sec{background:var(--navy)}
+.qpanel .big.ghost{background:var(--ground);color:var(--navy)}
+.qact{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+.reg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field.wide,.consent,.reg .err,.reg .qact{grid-column:1/-1}
+.field label{font-size:15px;font-weight:800;color:var(--navy)}
+.field input,.field select{font:inherit;font-size:17px;padding:12px 14px;border:2px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);width:100%}
+.field input:focus,.field select:focus{outline:3px solid var(--glow);border-color:var(--accent)}
+.field input[aria-invalid="true"],.field select[aria-invalid="true"]{border-color:var(--bad)}
+.consent{display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.45;color:var(--muted);background:var(--ground);padding:12px 14px;border-radius:12px}
+.consent input{width:20px;height:20px;flex:none;margin-top:2px;accent-color:var(--accent)}
+.err{margin:0;color:var(--bad);font-weight:700;font-size:15px;min-height:1em}
+.who{font-size:15px;color:var(--muted);margin:0 0 4px}
+.status{margin-top:14px;padding:12px 14px;border-radius:12px;font-size:15px;font-weight:700;background:var(--ground);color:var(--navy)}
+.status.ok{background:color-mix(in srgb, var(--ok) 12%, var(--paper));color:var(--ok)}
+.status.bad{background:color-mix(in srgb, var(--bad) 10%, var(--paper));color:var(--bad)}
+@media (max-width:720px){.qpanel{grid-template-columns:1fr}.qmasc{display:none}.reg{grid-template-columns:1fr}}
+/* aviso para girar el celular */
+.rotate{position:fixed;inset:0;z-index:30;background:var(--navy);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:28px;text-align:center}
+.rotate[hidden]{display:none}
+.rotate img{height:30vh;max-height:240px}
+.rotate h2{margin:0;font-size:28px;font-weight:900}
+.rotate p{margin:0;font-size:17px;line-height:1.45;max-width:30ch;color:color-mix(in srgb,#fff 82%,var(--navy))}
+.rotate .ph{width:46px;height:78px;border:4px solid #fff;border-radius:10px;position:relative;animation:turn 2.4s ease-in-out infinite}
+.rotate .ph::after{content:"";position:absolute;left:50%;bottom:5px;width:10px;height:3px;margin-left:-5px;border-radius:2px;background:#fff}
+@keyframes turn{0%,20%{transform:rotate(0)}50%,80%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
+.rotate button{border:0;border-radius:14px;font:inherit;font-size:17px;font-weight:800;padding:14px 22px;width:min(320px,100%)}
+.rotate .r1{background:var(--accent);color:#fff}
+.rotate .r2{background:transparent;color:#fff;border:2px solid color-mix(in srgb,#fff 50%,transparent)}
+.only-ls{display:none}
+/* celular en horizontal: escenario a toda altura, subtítulos y controles en columna lateral */
+@media (orientation:landscape) and (max-height:540px){
+  .app{max-width:none;display:grid;grid-template-columns:minmax(0,1fr) 220px;grid-template-rows:1fr auto;gap:8px;padding:6px 8px;height:100%}
+  .top,.prog,.hint{display:none}
+  .stagewrap{grid-column:1;grid-row:1 / span 2;align-self:center;justify-self:center;width:min(100%, calc((100dvh - 12px) * 16 / 9));border-radius:10px}
+  .caption{grid-column:2;grid-row:1;font-size:15px;padding:10px 12px;min-height:0;align-self:stretch;border-radius:10px;border-top-width:4px}
+  .ctrls{grid-column:2;grid-row:2;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .cbtn{padding:8px 6px;font-size:13px;border-radius:9px}
+  .cbtn.main{min-width:0;grid-column:1 / span 2}
+  .auto{grid-column:1 / span 2;font-size:12px;justify-content:center}
+  .only-ls{display:block}
+  body.quizmode .app{display:flex;height:auto}
+}
+@media (prefers-reduced-motion: reduce){.mbody,.lift,.load,.newbox,.rec,.conf,.cbtn.pulse{animation:none!important}.fx,.roll,.mbody img{transition:none!important}}
+@media (max-width:640px){.cbtn{padding:10px 12px;font-size:14px}.cbtn.main{min-width:110px}.brand span{font-size:17px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="brand"><b>SEGURIDAD REPREMUNDO</b><span id="modname">Capacitación ARES</span></div>
+    <button class="tbtn" id="bHome" type="button">Inicio</button>
+    <button class="tbtn" id="bQuiz" type="button">Evaluación</button>
+  </div>
+  <div class="prog" id="prog" aria-label="Avance por bloques"></div>
+  <div class="stagewrap" id="wrap"><div class="stage" id="stage"></div></div>
+  <div class="caption" aria-live="polite"><p id="cap">Bienvenido. Pulse «Comenzar capacitación» para iniciar con la voz del instructor.</p></div>
+  <div class="ctrls">
+    <button class="cbtn" id="bPrev" type="button">◀ Anterior</button>
+    <button class="cbtn main" id="bPlay" type="button">▶ Reproducir</button>
+    <button class="cbtn" id="bAgain" type="button">↺ Repetir</button>
+    <button class="cbtn" id="bNext" type="button">Siguiente ▶</button>
+    <button class="cbtn only-ls" id="bHome2" type="button">⌂ Inicio</button><button class="cbtn only-ls" id="bFull2" type="button" hidden>⛶ Completa</button>
+    <label class="auto"><input type="checkbox" id="auto" checked> Avanzar solo</label>
+  </div>
+  <div class="hint">En el celular, gírelo en horizontal para ver mejor las pantallas.</div>
+  <section class="qpanel" id="qpanel" hidden aria-live="polite"></section>
+</div>
+<div class="rotate" id="rotate" hidden role="dialog" aria-labelledby="rotT"><img id="rotImg" alt=""><div class="ph" aria-hidden="true"></div><h2 id="rotT">Gire su celular</h2><p>La capacitación se ve mejor en horizontal. Gire el celular para verla en grande.</p><button class="r1" type="button" id="rFull" hidden>Ver en pantalla completa</button><button class="r2" type="button" id="rStay">Continuar en vertical</button></div>
+
+<audio id="voz" preload="auto"></audio>
+
+<script>
+/* =========================================================
+   CONFIGURACIÓN EDITABLE
+   bloques[].lineas: [segundo de diseño, texto del subtítulo, audio]
+     - audio: archivo de la carpeta assets/voz con esa frase. null = sin voz (el subtítulo se muestra el tiempo de lectura).
+     - El segundo de diseño solo ordena las animaciones dentro del bloque; la voz marca el ritmo real.
+   pose: poses de la mascota [segundo de diseño, pose].
+   ========================================================= */
+const CONFIG = {
+  bloques: [
+    { id:'bienvenida', modulo:'Bienvenida', dur:13,
+      lineas:[[0,'¡Hola! Bienvenido a esta capacitación.','assets/voz/01a-hola.mp3'],[4.4,'En esta oportunidad vamos a conocer algunos de los procedimientos que hacen parte de nuestras actividades de monitoreo y control.','assets/voz/01b-oportunidad.mp3']],
+      pose:[[0,'wave'],[5.3,'present']], wave:[0,4.6] },
+    { id:'recorrido', modulo:'Bienvenida', dur:16,
+      lineas:[[0,'Te acompañaré durante este recorrido para explicarte cómo se deben gestionar los cargues y descargues, el registro de novedades y las aperturas de cuartos de seguridad y racks.','assets/voz/02a-acompanare.mp3'],[11,'¡Comencemos!','assets/voz/02b-comencemos.mp3']],
+      pose:[[0,'present'],[3,'point'],[5.5,'present'],[10.9,'cheer']] },
+    { id:'ares', modulo:'La plataforma ARES', dur:13,
+      lineas:[[0,'Ingresa a ARES y abre el menú. En la sección Ares encontrarás los tres registros:','assets/voz/03a-menu.mp3'],[6.8,'Operaciones de cargue y descargue, Novedades, y Apertura y cierre de lugares con mercancía delicada.','assets/voz/03b-registros.mp3']],
+      pose:[[0,'present'],[11.6,'thumbs']] },
+    { id:'muelle', modulo:'Módulo 1 · Cargues y descargues', dur:4.7,
+      lineas:[[0,'Comenzamos con nuestro primer módulo: cargues y descargues.','assets/voz/04a-modulo1.mp3']],
+      pose:[[0,'wave'],[1.8,'present']], wave:[0,1.7] },
+    { id:'registroCargue', modulo:'Módulo 1 · Cargues y descargues', dur:24,
+      lineas:[[0,'En ARES, abre Operaciones de cargue y descargue y diligencia los datos de la operación.','assets/voz/06a-formulario.mp3'],[5.6,'Placa, bodega, cliente, tipo de operación (cargue o descargue), muelle, conductor, cédula, destino y responsable.','assets/voz/06b-campos.mp3'],[13.6,'Si la operación trae novedad, márcala, elige el tipo y agrega observaciones.','assets/voz/06c-novedad.mp3'],[18.4,'Adjunta al menos una foto como evidencia y pulsa Registrar cargue.','assets/voz/06d-evidencia.mp3']],
+      pose:[[0,'present'],[18.4,'idea'],[21.4,'thumbs']] },
+    { id:'recuerda', modulo:'Módulo 1 · Cargues y descargues', dur:11,
+      lineas:[[0,'Recuerda: toda novedad identificada debe quedar debidamente documentada, indicando la fecha, la hora, el lugar y una descripción clara de lo observado.','assets/voz/07-recuerda.mp3']],
+      pose:[[0,'idea'],[8.6,'point']] },
+    { id:'novedades', modulo:'Módulo 2 · Novedades', dur:18,
+      lineas:[[0,'Ahora continuamos con el módulo de novedades.','assets/voz/08a-modulo2.mp3'],[4.2,'Una novedad es cualquier situación relevante identificada durante las actividades de monitoreo que requiere ser documentada o comunicada.','assets/voz/08b-definicion.mp3'],[11.4,'Cuando identifiques una situación, es importante registrar la información de manera clara, objetiva y precisa.','assets/voz/08c-clara.mp3']],
+      pose:[[0,'wave'],[3.6,'calm'],[11.4,'present']], wave:[0,3.3] },
+    { id:'pasos', modulo:'Módulo 2 · Novedades', dur:26,
+      lineas:[[0,'Ten en cuenta estos aspectos:','assets/voz/09a-aspectos.mp3'],[3,'Primero, identifica qué ocurrió.','assets/voz/09b-primero.mp3'],[6.2,'Segundo, establece la fecha y hora del evento.','assets/voz/09c-segundo.mp3'],[9.6,'Tercero, identifica el lugar o área donde se presentó.','assets/voz/09d-tercero.mp3'],[13.2,'Cuarto, describe los hechos de acuerdo con lo que realmente se observa.','assets/voz/09e-cuarto.mp3'],[17.6,'Y finalmente, realiza el registro y la comunicación correspondiente según el procedimiento establecido.','assets/voz/09f-finalmente.mp3'],[22.8,'Repaso de los 5 pasos.','assets/voz/09g-repaso.mp3']],
+      pose:[[0,'present'],[3,'point'],[9.6,'present'],[13.2,'think'],[17.6,'present'],[22.8,'thumbs']] },
+    { id:'registroNovedad', modulo:'Módulo 2 · Novedades', dur:18,
+      lineas:[[0,'En ARES, abre Novedades y selecciona la sede. La unidad de seguridad aparece asignada.',null],[6.2,'Elige el tipo de novedad y describe lo ocurrido.','assets/voz/10b-tipo.mp3'],[10.2,'Adjunta al menos una imagen como evidencia (máximo 10) y envía la novedad.','assets/voz/10c-evidencias.mp3']],
+      pose:[[0,'present'],[10.4,'idea'],[15,'thumbs']] },
+    { id:'hechos', modulo:'Módulo 2 · Novedades', dur:11,
+      lineas:[[0,'Recuerda que nuestros reportes deben basarse en hechos observables, evitando suposiciones o conclusiones que no puedan ser verificadas.','assets/voz/11-hechos.mp3']],
+      pose:[[0,'stop'],[8.6,'thumbs']] },
+    { id:'aperturas', modulo:'Módulo 3 · Aperturas', dur:21,
+      lineas:[[0,'Por último: aperturas de cuartos de seguridad y racks.','assets/voz/12a-modulo3.mp3'],[4.1,'En ARES, abre Apertura y cierre de lugares. Verás cada cuarto de seguridad, rack y su estado.','assets/voz/12b-aperturas.mp3'],[10.5,'Pulsa Abrir para registrar la apertura, y usa Actualizar para ver el estado más reciente.','assets/voz/12c-abrir.mp3'],[16.2,'Un lugar abierto debe cerrarse antes de volver a abrirlo.','assets/voz/12d-advertencia.mp3']],
+      pose:[[0,'wave'],[1.8,'present'],[16.2,'stop'],[19.6,'thumbs']], wave:[0,1.6] },
+    { id:'cierre', modulo:'Cierre', dur:9,
+      lineas:[[0,'¡Excelente trabajo! Ahora ya sabes cómo registrar en ARES.','assets/voz/13-cierre.mp3']],
+      pose:[[0,'cheer'],[3.6,'thumbs']] }
+  ],
+  // Duración de cada audio en segundos (se completa sola si falta).
+  duraciones: {"assets/voz/01a-hola.mp3": 3.16,"assets/voz/01b-oportunidad.mp3": 13.64,"assets/voz/02a-acompanare.mp3": 10.19,"assets/voz/02b-comencemos.mp3": 1.28,"assets/voz/03a-menu.mp3": 6.95,"assets/voz/03b-registros.mp3": 6.43,"assets/voz/04a-modulo1.mp3": 3.74,"assets/voz/06a-formulario.mp3": 6.9,"assets/voz/06b-campos.mp3": 10.4,"assets/voz/06c-novedad.mp3": 7.13,"assets/voz/06d-evidencia.mp3": 5.3,"assets/voz/07-recuerda.mp3": 10.16,"assets/voz/08a-modulo2.mp3": 4.31,"assets/voz/08b-definicion.mp3": 8.44,"assets/voz/08c-clara.mp3": 7.52,"assets/voz/09a-aspectos.mp3": 2.38,"assets/voz/09b-primero.mp3": 3.66,"assets/voz/09c-segundo.mp3": 3.45,"assets/voz/09d-tercero.mp3": 3.79,"assets/voz/09e-cuarto.mp3": 4.36,"assets/voz/09f-finalmente.mp3": 6.32,"assets/voz/09g-repaso.mp3": 2.01,"assets/voz/10b-tipo.mp3": 4.83,"assets/voz/10c-evidencias.mp3": 6.5,"assets/voz/11-hechos.mp3": 10.92,"assets/voz/12a-modulo3.mp3": 5.46,"assets/voz/12b-aperturas.mp3": 7.18,"assets/voz/12c-abrir.mp3": 6.84,"assets/voz/12d-advertencia.mp3": 5.25,"assets/voz/13-cierre.mp3": 4.57},
+
+  /* FOTOS REALES OPCIONALES (formato horizontal, ideal 1600x900 px).
+     Deje '' para usar el dibujo. Ejemplo: muelle: 'assets/foto-muelle.jpg' */
+  fotos: { muelle: '', camara: '' },
+
+  /* CAPTURAS DE ARES Y SUS RECUADROS
+     - archivo: ruta de la captura. ancho/alto: tamaño real de la imagen en píxeles.
+     - zonas: [arriba, abajo, izquierda, derecha] en píxeles de la imagen original.
+       Para medirlas abra la página con #medir al final del enlace y haga dos clics
+       (esquina superior izquierda y esquina inferior derecha del campo).
+     - desde/hasta: segundos de diseño del bloque en que se resalta.
+     - scroll (solo teléfonos): fila de la imagen (en píxeles) que queda arriba de la pantalla. */
+  pantallas: {
+    menu: { archivo:'assets/s-menu.webp', ancho:862, alto:1770, marcos: [
+      { texto:'Menú → sección Ares', zonas:[[430,494,75,790]], desde:2.2, hasta:6.0 },
+      { texto:'Cargues y descargues', zonas:[[503,573,75,790]], desde:7.0, hasta:8.9 },
+      { texto:'Novedades', zonas:[[577,643,75,790]], desde:8.9, hasta:10.8 },
+      { texto:'Aperturas y cierres', zonas:[[647,718,75,790]], desde:10.8, hasta:99 } ] },
+    cargue: { archivo:'assets/s-cargue.webp', ancho:788, alto:3240, marcos: [
+      { texto:'Placa, bodega y cliente', zonas:[[290,412,60,725],[440,570,60,725],[600,718,60,725]], desde:5.8, hasta:8.4, scroll:0 },
+      { texto:'Tipo de operación y muelle', zonas:[[755,848,60,725],[880,1000,60,725]], desde:8.6, hasta:10.6, scroll:551 },
+      { texto:'Conductor, cédula, destino y responsable', zonas:[[1030,1148,60,725],[1178,1295,60,725],[1330,1448,60,725],[1480,1600,60,725]], desde:10.8, hasta:13.4, scroll:1024 },
+      { texto:'Novedad: tipo y observaciones', zonas:[[1830,2385,40,750]], desde:13.8, hasta:18.2, scroll:1655 },
+      { texto:'Evidencias: mínimo una foto', zonas:[[2395,2840,40,750]], desde:18.6, hasta:21.2, scroll:1743 },
+      { texto:'Registrar cargue', zonas:[[2890,2970,25,762]], desde:21.3, hasta:99, scroll:1743 } ] },
+    novedades: { archivo:'assets/s-novedades.webp', ancho:788, alto:1973, marcos: [
+      { texto:'Sede', zonas:[[290,412,60,725]], desde:1.6, hasta:4.0, scroll:0 },
+      { texto:'Unidad de seguridad (asignada)', zonas:[[440,568,60,725]], desde:4.0, hasta:6.0, scroll:0 },
+      { texto:'Tipo de novedad', zonas:[[655,790,60,725]], desde:6.4, hasta:8.2, scroll:276 },
+      { texto:'Descripción', zonas:[[815,1052,60,725]], desde:8.2, hasta:10.0, scroll:276 },
+      { texto:'Evidencias: mínimo 1, máximo 10', zonas:[[1140,1565,40,750]], desde:10.6, hasta:99, scroll:473 } ] },
+    aperturas: { archivo:'assets/s-aperturas.webp', ancho:862, alto:1770, marcos: [
+      { texto:'Lugar y su estado', zonas:[[590,812,102,760]], desde:6.0, hasta:10.3 },
+      { texto:'ABRIR registra la apertura', zonas:[[712,790,134,732]], desde:10.7, hasta:13.4 },
+      { texto:'ACTUALIZAR muestra el estado', zonas:[[343,421,62,798]], desde:13.4, hasta:16.0 },
+      { texto:'Cerrar antes de volver a abrir', zonas:[[286,328,58,800]], desde:16.4, hasta:99 } ] }
+  },
+
+  /* MASCOTA: una imagen PNG/WebP con fondo transparente por pose, cortada a la figura. */
+  mascota: { wave:'assets/m-wave.webp', present:'assets/m-present.webp', think:'assets/m-think.webp', idea:'assets/m-idea.webp', thumbs:'assets/m-thumbs.webp',
+             stop:'assets/m-stop.webp', point:'assets/m-point.webp', cheer:'assets/m-cheer.webp', calm:'assets/m-calm.webp', doubt:'assets/m-doubt.webp' },
+
+  /* REGISTRO DE LA EVALUACIÓN
+     - url: a dónde se envían los resultados. En Vercel es la función api/resultado.js del mismo proyecto (no cambiar).
+       Los resultados se consultan en /admin.html
+     - aprobacion: porcentaje mínimo para aprobar (0.8 = 80 %). */
+  registro: {
+    url: '/api/resultado',
+    aprobacion: 0.8,
+    sedes: ['Zona Sabana', 'Zona Bogotá', 'Medellín', 'Zona Franca del Pacífico', 'Otra'],
+    cargos: ['Vigilante', 'Asistente de seguridad', 'Supervisor', 'Otro'],
+    turnos: ['Diurno', 'Nocturno', 'Rotativo'],
+    autorizacion: 'Autorizo a Representaciones del Mundo S.A.S. para tratar mis datos personales (nombre, cédula, sede, cargo, turno y resultados) con el fin de registrar y hacer seguimiento a esta capacitación, conforme a la Ley 1581 de 2012 y su política de tratamiento de datos.'
+  },
+
+  quiz: [
+    { q:'¿Qué debe indicar toda novedad que se documenta?', o:['Fecha, hora, lugar y una descripción clara de lo observado','Solo la hora y el nombre del vigilante','La placa del vehículo y el cliente','Lo que creemos que pudo haber pasado'], c:0,
+      e:'Toda novedad identificada se documenta con fecha, hora, lugar y una descripción clara de lo observado.' },
+    { q:'¿En qué deben basarse nuestros reportes?', o:['En suposiciones razonables','En hechos observables que se puedan verificar','En lo que comenten otras personas','En conclusiones propias'], c:1,
+      e:'Los reportes se basan en hechos observables, evitando suposiciones o conclusiones que no puedan ser verificadas.' },
+    { q:'En el registro de cargue, ¿cuál es el formato de la placa?', o:['3 números + 3 letras','6 números','3 letras + 3 números','Libre'], c:2,
+      e:'El formulario de ARES pide la placa con 3 letras + 3 números (ejemplo: ABC123).' },
+    { q:'¿Cuántas fotos de evidencia se necesitan, como mínimo, para enviar un reporte en ARES?', o:['Ninguna','Una','Cinco','Quince'], c:1,
+      e:'Debes adjuntar al menos una imagen para poder enviar el reporte o la novedad.' },
+    { q:'Al registrar una novedad, ¿cuál es el primer paso?', o:['Comunicarla por radio','Identificar qué ocurrió','Tomar diez fotos','Cerrar el formulario'], c:1,
+      e:'Primero identifica qué ocurrió; luego fecha y hora, lugar, descripción de los hechos, y finalmente registro y comunicación.' },
+    { q:'En Aperturas, ¿qué debe pasar antes de volver a abrir un lugar?', o:['Pulsar Actualizar dos veces','Avisar al cliente','Que el lugar esté cerrado','Nada, se puede abrir cuantas veces sea'], c:2,
+      e:'Un lugar abierto debe cerrarse antes de volver a abrirlo.' },
+    { q:'¿Cuántas imágenes se pueden adjuntar como máximo en una novedad?', o:['3','10','15','Sin límite'], c:1,
+      e:'El formulario de Novedades permite hasta 10 imágenes de evidencia.' }
+  ]
+};
+const IMG = {}; // la versión publicada incrusta aquí los archivos de assets
+</script>
+<script>
+(() => {
+const B = CONFIG.bloques;
+const stage = document.getElementById('stage'), wrap = document.getElementById('wrap');
+const voz = document.getElementById('voz'), capEl = document.getElementById('cap');
+const $ = (id) => document.getElementById(id);
+const H = (html) => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; };
+const src = (path) => (IMG && IMG[path]) || path;
+const P = CONFIG.pantallas;
+const MASC_H = 552; // alto en el escenario de la pose más alta
+
+/* ---------- escalado del escenario ---------- */
+const fit = () => { const k = wrap.clientWidth / 1600; stage.style.transform = 'scale(' + k + ')'; };
+new ResizeObserver(fit).observe(wrap); fit();
+
+/* ---------- fondo: sala de monitoreo ---------- */
+function room(op) {
+  let m = '';
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) {
+    const x = 560 + c * 340, y = 60 + r * 196;
+    m += '<rect x="' + x + '" y="' + y + '" width="320" height="182" rx="10" fill="var(--frame)"/><rect x="' + (x + 9) + '" y="' + (y + 9) + '" width="302" height="164" rx="4" fill="var(--mon)"/>';
+    if ((r * 3 + c) % 3 === 0) for (let i = 0; i < 3; i++) m += '<path d="M' + (x + 30) + ' ' + (y + 55 + i * 40) + ' H' + (x + 290) + '" stroke="var(--monlit)" stroke-width="4"/><rect x="' + (x + 50 + i * 70) + '" y="' + (y + 30 + i * 40) + '" width="44" height="24" fill="var(--monlit)" opacity=".6"/>';
+    else if ((r * 3 + c) % 3 === 1) m += '<rect x="' + (x + 90) + '" y="' + (y + 30) + '" width="140" height="130" fill="none" stroke="var(--monlit)" stroke-width="4"/><rect x="' + (x + 110) + '" y="' + (y + 100) + '" width="100" height="60" fill="var(--monlit)" opacity=".7"/>';
+    else m += '<path d="M' + x + ' ' + (y + 173) + ' L' + (x + 130) + ' ' + (y + 70) + ' H' + (x + 190) + ' L' + (x + 320) + ' ' + (y + 173) + '" fill="none" stroke="var(--monlit)" stroke-width="4"/>';
+    m += '<circle cx="' + (x + 290) + '" cy="' + (y + 26) + '" r="6" fill="var(--accent)"/>';
+  }
+  return '<svg class="art" viewBox="0 0 1600 900" aria-hidden="true"><defs><linearGradient id="wallg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--wall)"/><stop offset="1" stop-color="var(--ground)"/></linearGradient></defs><rect width="1600" height="900" fill="url(#wallg)"/><g opacity="' + op + '">' + m + '</g><rect y="700" width="1600" height="200" fill="var(--floor)"/></svg>';
+}
+
+/* ---------- muelle de cargue (1200x620) ---------- */
+function dock() {
+  const box = (x, y, w, h) => '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="3" fill="var(--card1)"/><rect x="' + (x + w * 0.42) + '" y="' + y + '" width="' + (w * 0.16) + '" height="' + h + '" fill="var(--card2)"/>';
+  let slats = ''; for (let i = 1; i < 13; i++) slats += '<path d="M70 ' + (82 + i * 23) + ' H370" stroke="color-mix(in srgb, var(--navy) 48%, var(--ground))" stroke-width="3"/>';
+  let racks = ''; for (let i = 0; i < 3; i++) racks += '<path d="M' + (470 + i * 120) + ' 110 V376" stroke="var(--monlit)" stroke-width="6"/>';
+  for (let j = 0; j < 3; j++) racks += '<path d="M460 ' + (170 + j * 80) + ' H740" stroke="var(--monlit)" stroke-width="6"/>' + box(480 + j * 30, 132 + j * 80, 70, 36) + box(600 - j * 20, 132 + j * 80, 80, 36);
+  const lamp = (x) => '<ellipse cx="' + x + '" cy="110" rx="90" ry="46" fill="color-mix(in srgb, var(--accent) 22%, transparent)"/><rect x="' + (x - 26) + '" y="48" width="52" height="16" rx="5" fill="var(--frame)"/>';
+  return '<svg class="art" viewBox="0 0 1200 620" aria-label="Muelle de cargue con camión y montacargas"><defs><pattern id="safe" width="40" height="12" patternUnits="userSpaceOnUse"><rect width="40" height="12" fill="var(--ink)"/><path d="M0 12 L12 0 H26 L14 12 Z M28 12 L40 0 V12 Z" fill="var(--accent)"/></pattern></defs>' +
+    '<rect width="1200" height="620" fill="color-mix(in srgb, var(--navy) 14%, var(--ground))"/><rect width="1200" height="400" fill="color-mix(in srgb, var(--navy) 24%, var(--ground))"/><rect width="1200" height="34" fill="var(--frame)"/>' +
+    '<rect x="58" y="70" width="324" height="312" fill="var(--frame)"/><rect x="70" y="82" width="300" height="300" fill="color-mix(in srgb, var(--navy) 36%, var(--ground))"/>' + slats +
+    '<rect x="438" y="70" width="324" height="312" fill="var(--frame)"/><rect x="450" y="82" width="300" height="300" fill="color-mix(in srgb, var(--ink) 82%, var(--navy))"/>' + racks +
+    '<rect x="818" y="70" width="324" height="312" fill="var(--frame)"/>' + lamp(220) + lamp(600) + lamp(980) +
+    '<g transform="translate(30 70)"><rect x="-6" y="-20" width="12" height="30" fill="var(--frame)"/><g transform="rotate(24)"><rect x="-6" y="8" width="64" height="30" rx="8" fill="var(--paper)"/><circle class="rec" cx="6" cy="18" r="5" fill="var(--accent)"/></g></g>' +
+    '<rect y="382" width="1200" height="48" fill="color-mix(in srgb, var(--navy) 58%, var(--ground))"/><rect y="382" width="1200" height="12" fill="url(#safe)"/>' +
+    '<path d="M0 560 H1200" stroke="var(--accent)" stroke-width="6" stroke-dasharray="60 40" opacity=".7"/>' +
+    '<ellipse cx="990" cy="512" rx="190" ry="18" fill="rgba(0,0,0,.18)"/><rect x="836" y="112" width="308" height="312" rx="6" fill="var(--paper)"/><rect x="858" y="134" width="264" height="262" fill="color-mix(in srgb, var(--ink) 75%, var(--navy))"/>' +
+    box(870, 330, 70, 60) + box(946, 330, 70, 60) + box(870, 266, 70, 60) + box(1040, 330, 70, 60) + '<g class="newbox">' + box(946, 266, 70, 60) + '</g>' +
+    '<rect x="796" y="120" width="42" height="296" rx="4" fill="color-mix(in srgb, var(--paper) 80%, var(--navy))"/><rect x="1142" y="120" width="42" height="296" rx="4" fill="color-mix(in srgb, var(--paper) 70%, var(--navy))"/>' +
+    '<rect x="846" y="424" width="288" height="20" rx="4" fill="var(--frame)"/><rect x="848" y="400" width="24" height="16" rx="3" fill="var(--accent)"/><rect x="1108" y="400" width="24" height="16" rx="3" fill="var(--accent)"/>' +
+    '<rect x="862" y="444" width="76" height="64" rx="10" fill="var(--ink)"/><rect x="1042" y="444" width="76" height="64" rx="10" fill="var(--ink)"/>' +
+    '<g class="lift"><ellipse cx="0" cy="4" rx="100" ry="8" fill="rgba(0,0,0,.2)"/><rect x="-78" y="-82" width="34" height="70" rx="6" fill="var(--frame)"/><rect x="-56" y="-72" width="118" height="60" rx="10" fill="var(--accent)"/>' +
+    '<path d="M-40 -72 V-152 H44 V-72" fill="none" stroke="var(--frame)" stroke-width="8"/><rect x="62" y="-178" width="14" height="178" fill="var(--frame)"/><rect x="76" y="-14" width="64" height="8" fill="var(--frame)"/>' +
+    '<g class="load"><rect x="76" y="-30" width="66" height="14" fill="var(--card2)"/>' + box(80, -86, 58, 56) + '</g><circle cx="-34" cy="-14" r="18" fill="var(--ink)"/><circle cx="40" cy="-14" r="18" fill="var(--ink)"/></g></svg>';
+}
+
+/* ---------- ayudas ---------- */
+const head = (k, t, size, w) => '<div class="words" style="left:80px;top:56px;width:' + (w || 1080) + 'px"><p class="kicker">' + k + '</p><h2 class="h" style="font-size:' + (size || 72) + 'px">' + t + '</h2></div>';
+const chipH = (cls, text, style) => '<div class="chip fx l ' + cls + '" style="' + style + '"><span class="dot"></span>' + text + '</div>';
+const boxes = (list, s) => list.map((b, i) => '<div class="hl fx hl' + i + '" style="left:' + Math.round(b[2] * s - 8) + 'px;top:' + Math.round(b[0] * s - 8) + 'px;width:' + Math.round((b[3] - b[2]) * s + 16) + 'px;height:' + Math.round((b[1] - b[0]) * s + 16) + 'px"></div>').join('');
+const win = (t, a, b) => t >= a && (b == null || t < b);
+const tog = (el, on) => el.classList.toggle('in', !!on);
+
+/* ---------- capturas de ARES con recuadros (datos en CONFIG.pantallas) ---------- */
+function marcoBoxes(cfg, s) { return cfg.marcos.map((m, i) => m.zonas.map((z) => '<div class="hl fx m' + i + '" style="left:' + Math.round(z[2] * s - 8) + 'px;top:' + Math.round(z[0] * s - 8) + 'px;width:' + Math.round((z[3] - z[2]) * s + 16) + 'px;height:' + Math.round((z[1] - z[0]) * s + 16) + 'px"></div>').join('')).join(''); }
+function chipsFor(sc, cfg, yOf, rightEdge, minY) {
+  return cfg.marcos.map((m) => { const y0 = yOf(m.zonas[0][0], m), y1 = yOf(m.zonas[m.zonas.length - 1][1], m);
+    const c = H(chipH('', m.texto, 'right:' + (1600 - rightEdge) + 'px;top:' + Math.round(Math.max(minY, Math.min(780, (y0 + y1) / 2 - 30))) + 'px')); sc.append(c); return c; });
+}
+// captura que ya trae su marco de teléfono (se muestra completa)
+function shotScene(sc, cfg, X, Y, h, alt) {
+  const s = h / cfg.alto;
+  const shot = H('<div class="shot medible" style="left:' + X + 'px;top:' + Y + 'px;width:' + Math.round(cfg.ancho * s) + 'px;height:' + h + 'px"><img alt="' + alt + '" src="' + src(cfg.archivo) + '" style="width:100%;height:100%">' + marcoBoxes(cfg, s) + '</div>');
+  sc.append(shot);
+  const chips = chipsFor(sc, cfg, (y) => Y + y * s, X - 20, 230);
+  return (t) => cfg.marcos.forEach((m, i) => { const on = win(t, m.desde, m.hasta); shot.querySelectorAll('.m' + i).forEach((e) => tog(e, on)); tog(chips[i], on); });
+}
+// captura larga dentro de un teléfono dibujado, con desplazamiento
+function phoneScene(sc, cfg, alt) {
+  const w = 400, vh = 760, X = 650, Y = 50, s = w / cfg.ancho;
+  const ph = H('<div class="phone" style="left:' + X + 'px;top:' + Y + 'px"><div class="screen" style="width:' + w + 'px;height:' + vh + 'px"><div class="roll medible"><img alt="' + alt + '" src="' + src(cfg.archivo) + '" style="width:' + w + 'px;height:' + Math.round(cfg.alto * s) + 'px">' + marcoBoxes(cfg, s) + '</div></div></div>');
+  sc.append(ph);
+  const maxSc = Math.max(0, cfg.alto * s - vh);
+  const scOf = (m) => Math.min(maxSc, (m.scroll || 0) * s);
+  const chips = chipsFor(sc, cfg, (y, m) => Y + 14 + y * s - scOf(m), X - 20, 280);
+  const roll = ph.querySelector('.roll');
+  return (t) => {
+    let scv = 0; cfg.marcos.forEach((m) => { if (t >= m.desde - 0.9) scv = scOf(m); });
+    roll.style.transform = 'translateY(' + (-scv) + 'px)';
+    cfg.marcos.forEach((m, i) => { const on = win(t, m.desde, m.hasta); ph.querySelectorAll('.m' + i).forEach((e) => tog(e, on)); tog(chips[i], on); });
+  };
+}
+// foto real opcional en lugar del dibujo del muelle
+const fotoOr = (foto, fallback) => foto ? '<img alt="Foto real del área de cargue" src="' + src(foto) + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">' : fallback;
+
+/* ---------- escenas: cada una devuelve update(t) en segundos de diseño ---------- */
+const SCENES = {
+  bienvenida(sc) {
+    sc.append(H('<div class="layer">' + room(0.12) + '</div>'));
+    sc.append(H('<div class="words fx in" style="left:90px;top:200px;width:820px"><p class="kicker">SEGURIDAD REPREMUNDO</p><h1 class="h" style="font-size:118px">Capacitación ARES</h1><p style="margin:0;font-size:34px;color:var(--muted);font-weight:700">Procedimientos operativos de monitoreo y control</p><div style="width:200px;height:8px;border-radius:4px;background:var(--accent);margin-top:14px"></div></div>'));
+    return () => {};
+  },
+  recorrido(sc) {
+    sc.append(H('<div class="layer">' + room(0.24) + '</div>'));
+    sc.append(H('<p class="kicker" style="position:absolute;left:92px;top:64px">LO QUE VAMOS A VER</p>'));
+    const items = ['Cargues y descargues', 'Registro de novedades', 'Aperturas de cuartos de seguridad y racks'];
+    const cards = items.map((txt, i) => { const c = H('<div class="card fx l" style="left:90px;top:' + (130 + i * 180) + 'px;width:840px;padding:24px 32px;display:flex;align-items:center;gap:26px"><div style="flex:none;width:80px;height:80px;border-radius:50%;background:var(--accent);color:#fff;font-size:44px;font-weight:900;display:flex;align-items:center;justify-content:center">' + (i + 1) + '</div><h3 style="margin:0;font-size:44px;font-weight:900;color:var(--navy);line-height:1.15">' + txt + '</h3></div>'); sc.append(c); return c; });
+    return (t) => cards.forEach((c, i) => tog(c, t >= [3.2, 5.6, 7.9][i]));
+  },
+  ares(sc) {
+    sc.append(H('<div class="layer">' + room(0.16) + '</div>'));
+    sc.append(H(head('PLATAFORMA', 'Así se ve ARES', 72, 520)));
+    return shotScene(sc, P.menu, 640, 40, 820, 'Menú de ARES');
+  },
+  muelle(sc) {
+    sc.append(H('<div class="layer">' + room(0.14) + '</div>'));
+    sc.append(H(head('MÓDULO 1', 'Cargues y descargues', 64)));
+    sc.append(H('<div class="card" style="left:70px;top:210px;width:1000px;height:517px;overflow:hidden">' + fotoOr(CONFIG.fotos.muelle, dock()) + '</div>'));
+    const chips = [['Movimiento de mercancía', 'left:380px;top:250px'], ['Vehículos involucrados', 'left:760px;top:230px'], ['Actividades de la operación', 'left:380px;top:640px']].map((c) => { const e = H(chipH('', c[0], c[1])); sc.append(e); return e; });
+    return (t) => chips.forEach((c, i) => tog(c, t >= 13.6 + i * 1.5));
+  },
+  seguimiento(sc) {
+    sc.append(H('<div class="layer">' + room(0.12) + '</div>'));
+    sc.append(H('<div style="position:absolute;left:70px;top:46px;width:1000px;height:560px;border-radius:24px;background:var(--frame);box-shadow:0 26px 50px rgba(0,0,0,.25)"><div style="position:absolute;left:18px;top:18px;width:964px;height:524px;border-radius:12px;overflow:hidden;background:var(--ink)"><div style="position:absolute;left:-20px;top:-10px;width:1010px;height:544px">' + fotoOr(CONFIG.fotos.camara, dock()) + '</div><div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg, color-mix(in srgb, var(--navy) 14%, transparent) 0 2px, transparent 2px 5px), color-mix(in srgb, var(--navy) 22%, transparent)"></div><div style="position:absolute;left:30px;top:26px;display:flex;align-items:center;gap:12px;padding:8px 18px;border-radius:10px;background:color-mix(in srgb, var(--ink) 70%, transparent);color:#fff;font-size:24px;font-weight:800;letter-spacing:.06em"><span class="rec" style="width:14px;height:14px;border-radius:50%;background:var(--accent)"></span>CÁMARA · MUELLE</div></div></div>'));
+    const track = H('<div style="position:absolute;left:90px;top:740px;width:960px;height:10px;border-radius:5px;background:color-mix(in srgb, var(--navy) 22%, var(--ground))"><div class="fill" style="position:absolute;left:0;top:0;height:10px;border-radius:5px;background:var(--navy);width:0"></div><div class="mk0" style="position:absolute;left:192px;top:-13px;width:36px;height:36px;margin-left:-18px;border-radius:50%;background:var(--accent);border:6px solid var(--paper);transform:scale(.5);opacity:.4;transition:all .4s cubic-bezier(.2,.9,.3,1.6)"></div><div class="mk1" style="position:absolute;left:768px;top:-13px;width:36px;height:36px;margin-left:-18px;border-radius:50%;background:var(--accent);border:6px solid var(--paper);transform:scale(.5);opacity:.4;transition:all .4s cubic-bezier(.2,.9,.3,1.6)"></div></div>');
+    sc.append(track);
+    const c0 = H(chipH('', 'Inicio del proceso', 'left:200px;top:640px')), c1 = H(chipH('', 'Finalización', 'left:740px;top:640px'));
+    sc.append(c0); sc.append(c1);
+    const fill = track.querySelector('.fill'), mk = [track.querySelector('.mk0'), track.querySelector('.mk1')];
+    return (t) => {
+      const p = Math.min(1, Math.max(0, (t - 0.8) / 8.8)), x = p * 960;
+      fill.style.width = x + 'px';
+      [[192, c0], [768, c1]].forEach(([mx, c], i) => { const on = x >= mx; mk[i].style.transform = on ? 'scale(1)' : 'scale(.5)'; mk[i].style.opacity = on ? 1 : 0.4; tog(c, on); });
+    };
+  },
+  registroCargue(sc) {
+    sc.append(H('<div class="layer">' + room(0.12) + '</div>'));
+    sc.append(H(head('MÓDULO 1 · EN ARES', 'Registrar el cargue', 60, 560)));
+    return phoneScene(sc, P.cargue, 'Formulario de cargue y descargue en ARES');
+  },
+  recuerda(sc) {
+    sc.append(H('<div class="layer">' + room(0.12) + '</div>'));
+    sc.append(H(head('RECUERDA', 'Toda novedad identificada debe quedar documentada', 64, 1080)));
+    const S = 'fill="none" stroke="var(--navy)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"';
+    const icons = ['<rect x="14" y="22" width="92" height="84" rx="12" ' + S + '/><path d="M14 46 H106 M38 12 V30 M82 12 V30" ' + S + '/><rect x="32" y="60" width="18" height="14" rx="3" fill="var(--accent)"/>',
+      '<circle cx="60" cy="60" r="46" ' + S + '/><path d="M60 60 V30 M60 60 L80 70" ' + S + '/><circle cx="60" cy="60" r="6" fill="var(--accent)"/>',
+      '<path d="M60 108 C40 82 22 64 22 46 A38 38 0 0 1 98 46 C98 64 80 82 60 108 Z" ' + S + '/><circle cx="60" cy="46" r="13" fill="var(--accent)"/>',
+      '<path d="M24 12 H78 L98 32 V108 H24 Z" ' + S + '/><path d="M40 56 H82 M40 74 H82 M40 92 H66" stroke="var(--accent)" stroke-width="6" stroke-linecap="round"/>'];
+    const names = ['Fecha', 'Hora', 'Lugar', 'Descripción clara'];
+    const cards = names.map((n, i) => { const c = H('<div class="card fx" style="left:' + (80 + i * 265) + 'px;top:360px;width:245px;padding:28px 12px;display:flex;flex-direction:column;align-items:center;gap:16px"><svg viewBox="0 0 120 120" width="110" height="110" aria-hidden="true">' + icons[i] + '</svg><p style="margin:0;font-size:32px;font-weight:900;color:var(--navy);text-align:center;line-height:1.1">' + n + '</p></div>'); sc.append(c); return c; });
+    return (t) => cards.forEach((c, i) => tog(c, t >= [4.4, 5.5, 6.5, 7.6][i]));
+  },
+  novedades(sc) {
+    sc.append(H('<div class="layer">' + room(0.14) + '</div>'));
+    sc.append(H(head('MÓDULO 2', 'Novedades', 72)));
+    let rows = '';
+    [380, 300, 420, 260].forEach((w, i) => { const hot = i === 2; rows += '<div class="nrow' + (hot ? ' hot' : '') + '" style="position:absolute;left:100px;top:' + (34 + i * 98) + 'px;width:800px;height:80px;border-radius:16px;background:' + (hot ? 'color-mix(in srgb, var(--accent) 12%, var(--paper))' : 'color-mix(in srgb, var(--navy) 5%, var(--paper))') + ';transition:box-shadow .4s, transform .4s"><div style="position:absolute;left:22px;top:20px;width:40px;height:40px;border-radius:10px;background:' + (hot ? 'var(--accent)' : 'color-mix(in srgb, var(--navy) 30%, var(--ground))') + '"></div><div style="position:absolute;left:84px;top:20px;width:' + w + 'px;height:16px;border-radius:8px;background:color-mix(in srgb, var(--navy) ' + (hot ? 70 : 40) + '%, var(--ground))"></div><div style="position:absolute;left:84px;top:48px;width:' + (w * 0.6) + 'px;height:12px;border-radius:6px;background:color-mix(in srgb, var(--navy) 22%, var(--ground))"></div></div><div style="position:absolute;left:46px;top:' + (62 + i * 98) + 'px;width:24px;height:24px;border-radius:50%;background:' + (hot ? 'var(--accent)' : 'var(--navy)') + ';border:5px solid var(--paper)"></div>'; });
+    const panel = H('<div class="card" style="left:80px;top:220px;width:940px;height:440px;overflow:hidden"><div style="position:absolute;left:56px;top:30px;width:4px;height:380px;background:color-mix(in srgb, var(--navy) 20%, var(--ground))"></div>' + rows + '</div>');
+    sc.append(panel);
+    const hot = panel.querySelector('.hot');
+    const tags = ['Clara', 'Objetiva', 'Precisa'].map((l, i) => { const c = H(chipH('', l, 'left:' + (80 + i * 260) + 'px;top:700px')); sc.append(c); return c; });
+    return (t) => { const on = t >= 4.6; hot.style.boxShadow = on ? '0 0 0 6px var(--glow)' : 'none'; hot.style.transform = on ? 'scale(1.03)' : 'none'; tags.forEach((c, i) => tog(c, t >= 14.4 + i * 0.6)); };
+  },
+  pasos(sc) {
+    sc.append(H('<div class="layer">' + room(0.12) + '</div>'));
+    sc.append(H(head('MÓDULO 2 · TEN EN CUENTA', 'Cómo registrar una novedad', 58)));
+    const steps = ['Identifica qué ocurrió', 'Establece la fecha y hora del evento', 'Identifica el lugar o área', 'Describe los hechos tal como se observan', 'Registra y comunica según el procedimiento'];
+    const at = [3, 6.2, 9.6, 13.2, 17.6];
+    const rows = steps.map((s, i) => { const r = H('<div class="fx l" style="position:absolute;left:80px;top:' + (205 + i * 128) + 'px;width:1010px;height:104px"><div class="num" style="position:absolute;left:0;top:10px;width:84px;height:84px;border-radius:50%;background:var(--navy);color:#fff;font-size:42px;font-weight:900;display:flex;align-items:center;justify-content:center;transition:background .3s">' + (i + 1) + '</div><div class="card pc" style="left:110px;top:0;min-height:104px;width:900px;padding:0 32px;display:flex;align-items:center;transition:box-shadow .3s"><p style="margin:0;font-size:38px;font-weight:900;color:var(--navy)">' + s + '</p></div></div>'); sc.append(r); return r; });
+    return (t) => rows.forEach((r, i) => { const seen = t >= at[i], cur = (win(t, at[i], i < 4 ? at[i + 1] : 99)) || t >= 22.8; tog(r, seen); r.classList.toggle('dim', seen && !cur); r.querySelector('.num').style.background = cur && seen ? 'var(--accent)' : 'var(--navy)'; r.querySelector('.pc').style.boxShadow = cur && seen ? '0 0 0 6px var(--glow), 0 16px 36px rgba(20,32,46,.12)' : ''; });
+  },
+  registroNovedad(sc) {
+    sc.append(H('<div class="layer">' + room(0.12) + '</div>'));
+    sc.append(H(head('MÓDULO 2 · EN ARES', 'Registrar la novedad', 60, 560)));
+    return phoneScene(sc, P.novedades, 'Formulario de novedades en ARES');
+  },
+  hechos(sc) {
+    sc.append(H('<div class="layer">' + room(0.12) + '</div>'));
+    sc.append(H(head('RECUERDA', 'Solo hechos que se puedan verificar', 64)));
+    const card = (x, mark, text) => H('<div class="card fx" style="left:' + x + 'px;top:300px;width:500px;padding:40px 36px;display:flex;flex-direction:column;gap:26px"><svg viewBox="0 0 140 140" width="130" height="130" aria-hidden="true">' + mark + '</svg><p style="margin:0;font-size:40px;font-weight:900;color:var(--navy);line-height:1.15">' + text + '</p></div>');
+    const yes = card(80, '<circle cx="70" cy="70" r="64" fill="var(--navy)"/><path d="M38 72 L60 94 L104 48" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>', 'Hechos observables');
+    const no = card(620, '<circle cx="70" cy="70" r="64" fill="var(--accent)"/><path d="M46 46 L94 94 M94 46 L46 94" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round"/>', 'Suposiciones o conclusiones sin verificar');
+    sc.append(yes); sc.append(no);
+    return (t) => { tog(yes, t >= 2.6); tog(no, t >= 5.2); no.classList.toggle('dim', t >= 6.8); };
+  },
+  aperturas(sc) {
+    sc.append(H('<div class="layer">' + room(0.14) + '</div>'));
+    sc.append(H(head('MÓDULO 3', 'Aperturas de cuartos de seguridad y racks', 50, 540)));
+    return shotScene(sc, P.aperturas, 640, 40, 820, 'Pantalla de Aperturas en ARES');
+  },
+  cierre(sc) {
+    sc.append(H('<div class="layer">' + room(0.18) + '</div>'));
+    let conf = ''; for (let i = 0; i < 26; i++) conf += '<div class="conf" style="left:' + (820 + ((i * 97) % 760)) + 'px;background:' + (i % 2 ? 'var(--accent)' : 'var(--navy)') + ';animation-duration:' + (4 + (i % 5) * 0.7) + 's;animation-delay:' + (-(i * 0.37) % 4) + 's"></div>';
+    sc.append(H('<div class="layer" aria-hidden="true">' + conf + '</div>'));
+    sc.append(H('<div class="words fx in" style="left:90px;top:200px;width:900px"><p class="kicker">SEGURIDAD REPREMUNDO</p><h2 class="h" style="font-size:104px">¡Listo! Ya conoces ARES</h2><div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:18px"><span class="chip" style="position:relative">Cargues y descargues</span><span class="chip" style="position:relative">Novedades</span><span class="chip" style="position:relative">Aperturas</span></div></div>'));
+    const go = H('<button class="big fx" type="button" style="position:absolute;left:90px;top:640px">Hacer la evaluación ▶</button>');
+    go.addEventListener('click', () => showQuiz());
+    sc.append(go);
+    return (t) => tog(go, t >= 2);
+  }
+};
+
+/* ---------- mascota ---------- */
+const mascot = H('<div class="mascot"><div class="mshadow"></div><div class="mbody">' + Object.keys(CONFIG.mascota).map((p) => '<img alt="" data-p="' + p + '" src="' + src(CONFIG.mascota[p]) + '">').join('') + '</div></div>');
+// todas las poses a la misma escala: la más alta mide MASC_H
+const sizeMascot = () => { const ims = [...mascot.querySelectorAll('img')]; const mx = Math.max(1, ...ims.map((i) => i.naturalHeight || 0)); ims.forEach((i) => { if (i.naturalHeight) i.style.height = Math.round(i.naturalHeight / mx * MASC_H) + 'px'; }); };
+mascot.querySelectorAll('img').forEach((i) => i.addEventListener('load', sizeMascot)); sizeMascot();
+let curPose = '';
+function setPose(p) { if (p === curPose) return; curPose = p; mascot.querySelectorAll('img').forEach((im) => im.classList.toggle('on', im.dataset.p === p)); }
+
+/* ---------- estado y reproducción ---------- */
+let idx = -1, update = null, playing = false, view = 'menu';
+let li = 0, lineAcc = 0, lineT0 = 0, lineAudio = false;
+const prog = $('prog');
+B.forEach((b, i) => { const d = H('<button type="button" aria-label="Ir al bloque ' + (i + 1) + ': ' + b.modulo + '"></button>'); d.addEventListener('click', () => go(i, true)); prog.append(d); });
+
+/* ---------- voz: cada frase tiene su propio audio; la frase marca el ritmo de las animaciones ---------- */
+const DUR = CONFIG.duraciones || {};
+const words = (s) => s.split(/\s+/).length;
+function lineLen(b, k) {
+  const l = b.lineas[k];
+  if (l[2]) return DUR[l[2]] || (lineAudio && li === k && isFinite(voz.duration) ? voz.duration : 1 + 0.4 * words(l[1]));
+  return Math.max(2.5, 1.2 + 0.33 * words(l[1])); // sin voz: tiempo de lectura
+}
+function elapsed() {
+  if (lineAudio) return voz.currentTime || 0;
+  return lineAcc + (playing ? (performance.now() - lineT0) / 1000 : 0);
+}
+function designT() {
+  const b = B[idx], L = b.lineas;
+  const len = lineLen(b, li), e = Math.min(len, elapsed());
+  const a = L[li][0], z = li + 1 < L.length ? L[li + 1][0] : b.dur;
+  return { t: a + (z - a) * (len ? e / len : 1), e, len };
+}
+function loadLine(k) {
+  const b = B[idx]; li = k; lineAcc = 0; lineT0 = performance.now();
+  const a = b.lineas[k][2];
+  lineAudio = !!a;
+  voz.pause();
+  if (a) { voz.src = src(a); try { voz.currentTime = 0; } catch (e) {} }
+  capEl.textContent = b.lineas[k][1];
+}
+function nextLine() {
+  const b = B[idx];
+  if (li + 1 < b.lineas.length) { loadLine(li + 1); if (playing) startLine(); }
+  else endBlock();
+}
+function startLine() {
+  lineT0 = performance.now();
+  if (lineAudio) {
+    const p = voz.play();
+    if (p && p.catch) p.catch(() => { lineAudio = false; lineAcc = 0; lineT0 = performance.now(); }); // sin permiso de audio: sigue con el tiempo de lectura
+  }
+}
+voz.addEventListener('ended', () => { if (view === 'block' && playing && lineAudio) nextLine(); });
+function render() {
+  if (view === 'block' && idx >= 0) {
+    const b = B[idx], { t, e, len } = designT();
+    update && update(t);
+    let pose = b.pose[0][1]; b.pose.forEach((p) => { if (t >= p[0]) pose = p[1]; });
+    setPose(pose);
+    mascot.classList.toggle('waving', !!(b.wave && t >= b.wave[0] && t < b.wave[1] && playing));
+    if (playing && !lineAudio && e >= len) nextLine();
+  }
+  requestAnimationFrame(render);
+}
+function endBlock() {
+  pause(); li = B[idx].lineas.length - 1; lineAudio = false; lineAcc = lineLen(B[idx], li);
+  if ($('auto').checked && idx < B.length - 1) setTimeout(() => go(idx + 1, true), 500);
+  else $('bNext').classList.add('pulse');
+}
+function play() {
+  if (view !== 'block') return;
+  const b = B[idx];
+  if (li === b.lineas.length - 1 && elapsed() >= lineLen(b, li) - 0.05) loadLine(0);
+  playing = true; $('bPlay').textContent = '❚❚ Pausa';
+  if (lineAudio) { const p = voz.play(); if (p && p.catch) p.catch(() => { lineAudio = false; lineT0 = performance.now(); }); }
+  else lineT0 = performance.now();
+}
+function pause() {
+  if (playing && !lineAudio) lineAcc += (performance.now() - lineT0) / 1000;
+  playing = false; voz.pause(); $('bPlay').textContent = '▶ Reproducir';
+}
+function go(i, autoplay) {
+  closeQuiz(); pause(); view = 'block'; idx = i; $('bNext').classList.remove('pulse');
+  stage.innerHTML = '';
+  const sc = H('<div class="scene"></div>'); stage.append(sc);
+  update = SCENES[B[i].id](sc);
+  stage.append(mascot); curPose = '';
+  loadLine(0);
+  $('modname').textContent = B[i].modulo;
+  [...prog.children].forEach((d, k) => { d.className = k < i ? 'done' : (k === i ? 'cur' : ''); });
+  $('bPrev').disabled = i === 0; $('bNext').disabled = false; $('bPlay').disabled = false; $('bAgain').disabled = false;
+  if (autoplay) { playing = true; $('bPlay').textContent = '❚❚ Pausa'; startLine(); }
+}
+
+/* ---------- menú de inicio ---------- */
+function showMenu() {
+  closeQuiz(); pause(); view = 'menu'; idx = -1; stage.innerHTML = '';
+  const v = H('<div class="view"><div class="layer">' + room(0.12) + '</div><div class="words" style="left:96px;top:90px;width:1100px"><p class="kicker">SEGURIDAD REPREMUNDO</p><h1 class="h" style="font-size:104px">Capacitación ARES</h1><p style="margin:0;font-size:32px;color:var(--muted);font-weight:700">Cargues y descargues, novedades y aperturas. Unos 4 minutos con voz, y una evaluación al final.</p></div>' +
+    '<div class="menu-btns"><button class="big" type="button" data-go="0">▶ Comenzar capacitación</button><div class="mods"><button class="mod" type="button" data-go="2"><i>A</i>La plataforma ARES</button><button class="mod" type="button" data-go="3"><i>1</i>Cargues y descargues</button><button class="mod" type="button" data-go="6"><i>2</i>Novedades</button><button class="mod" type="button" data-go="10"><i>3</i>Aperturas</button></div></div></div>');
+  v.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(+b.dataset.go, true)));
+  stage.append(v); stage.append(mascot); curPose = ''; setPose('wave');
+  mascot.classList.add('waving'); setTimeout(() => mascot.classList.remove('waving'), 2400);
+  capEl.textContent = 'Bienvenido. Pulse «Comenzar capacitación» para iniciar con la voz del instructor.';
+  $('modname').textContent = 'Capacitación ARES';
+  [...prog.children].forEach((d) => { d.className = ''; });
+  $('bPrev').disabled = true; $('bAgain').disabled = true; $('bPlay').disabled = false; $('bNext').disabled = false;
+}
+
+/* ---------- evaluación con registro del participante ---------- */
+const REG = CONFIG.registro, QP = $('qpanel'), PKEY = 'ares-envios-pendientes';
+let persona = null, qi = 0, score = 0, resp = [], qStart = 0, intento = 0;
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const field = (id, label, ctrl, wide) => '<div class="field' + (wide ? ' wide' : '') + '"><label for="' + id + '">' + label + '</label>' + ctrl + '</div>';
+function qOpen(inner, pose) {
+  pause(); view = 'quiz'; document.body.classList.add('quizmode'); QP.hidden = false;
+  $('modname').textContent = 'Evaluación';
+  QP.innerHTML = '<div class="qmain">' + inner + '</div><div class="qmasc"><img alt="" src="' + src(CONFIG.mascota[pose]) + '"></div>';
+  window.scrollTo(0, 0);
+}
+function closeQuiz() { document.body.classList.remove('quizmode'); QP.hidden = true; }
+function showQuiz() { if (!persona) showRegistro(); else startQuiz(); }
+
+function showRegistro() {
+  const opts = (arr) => '<option value="">Seleccione…</option>' + arr.map((s) => '<option>' + esc(s) + '</option>').join('');
+  qOpen('<div class="qnum">EVALUACIÓN · DATOS DEL PARTICIPANTE</div><p class="qtext">Antes de empezar, registre sus datos.</p>' +
+    '<form id="regForm" class="reg" novalidate>' +
+    field('rNombre', 'Nombre completo', '<input id="rNombre" autocomplete="name" maxlength="80">', true) +
+    field('rCedula', 'Número de cédula', '<input id="rCedula" inputmode="numeric" maxlength="15">') +
+    field('rSede', 'Sede / bodega', '<select id="rSede">' + opts(REG.sedes) + '</select>') +
+    field('rCargo', 'Cargo', '<select id="rCargo">' + opts(REG.cargos) + '</select>') +
+    field('rTurno', 'Turno', '<select id="rTurno">' + opts(REG.turnos) + '</select>') +
+    '<label class="consent"><input type="checkbox" id="rOk"><span>' + esc(REG.autorizacion) + '</span></label>' +
+    '<p class="err" id="rErr" role="alert"></p>' +
+    '<div class="qact"><button class="big" type="submit">Empezar evaluación ▶</button><button class="big ghost" type="button" id="rBack">Volver al inicio</button></div></form>', 'present');
+  const f = $('regForm');
+  $('rBack').addEventListener('click', showMenu);
+  f.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const v = (id) => $(id).value.trim();
+    const nombre = v('rNombre').replace(/\s+/g, ' '), cedula = v('rCedula').replace(/[.\s-]/g, '');
+    const checks = [['rNombre', nombre.length >= 5 && nombre.includes(' '), 'Escriba su nombre completo (nombre y apellido).'],
+      ['rCedula', /^\d{5,11}$/.test(cedula), 'La cédula debe tener solo números (entre 5 y 11 dígitos).'],
+      ['rSede', !!v('rSede'), 'Seleccione la sede.'], ['rCargo', !!v('rCargo'), 'Seleccione el cargo.'], ['rTurno', !!v('rTurno'), 'Seleccione el turno.']];
+    let msg = '';
+    checks.forEach(([id, ok, m]) => { $(id).setAttribute('aria-invalid', String(!ok)); if (!ok && !msg) msg = m; });
+    if (!msg && !$('rOk').checked) msg = 'Debe aceptar la autorización de tratamiento de datos para continuar.';
+    $('rErr').textContent = msg;
+    if (msg) { const bad = checks.find((c) => !c[1]); if (bad) $(bad[0]).focus(); return; }
+    persona = { nombre, cedula, sede: v('rSede'), cargo: v('rCargo'), turno: v('rTurno') };
+    intento = 0;
+    startQuiz();
+  });
+  $('rNombre').focus();
+}
+
+function startQuiz() { qi = 0; score = 0; resp = []; qStart = Date.now(); intento++; drawQ(); }
+
+function drawQ() {
+  const Q = CONFIG.quiz;
+  if (qi >= Q.length) return finishQuiz();
+  const q = Q[qi];
+  qOpen('<p class="who">' + esc(persona.nombre) + ' · ' + esc(persona.sede) + '</p><div class="qnum">PREGUNTA ' + (qi + 1) + ' DE ' + Q.length + '</div><p class="qtext">' + esc(q.q) + '</p><div class="opts">' +
+    q.o.map((o, k) => '<button class="opt" type="button" data-k="' + k + '"><b>' + 'ABCD'[k] + '</b>' + esc(o) + '</button>').join('') + '</div><div class="feedback" id="fb"></div>', 'think');
+  QP.querySelectorAll('.opt').forEach((btn) => btn.addEventListener('click', () => {
+    const k = +btn.dataset.k, right = k === q.c;
+    if (right) score++;
+    resp.push({ n: qi + 1, pregunta: q.q, elegida: 'ABCD'[k] + '. ' + q.o[k], correcta: right });
+    QP.querySelectorAll('.opt').forEach((b2) => { b2.disabled = true; const kk = +b2.dataset.k; if (kk === q.c) b2.classList.add('ok'); else if (kk === k) b2.classList.add('bad'); });
+    QP.querySelector('.qmasc img').src = src(CONFIG.mascota[right ? 'thumbs' : 'doubt']);
+    const fb = $('fb');
+    fb.innerHTML = '<strong>' + (right ? '¡Correcto!' : 'No es correcto.') + '</strong> ' + esc(q.e) + '<div class="qact"><button class="big" type="button" id="qNext">' + (qi + 1 < Q.length ? 'Siguiente pregunta ▶' : 'Ver resultado ▶') + '</button></div>';
+    $('qNext').addEventListener('click', () => { qi++; drawQ(); });
+    $('qNext').focus();
+  }));
+}
+
+function finishQuiz() {
+  const total = CONFIG.quiz.length, pct = score / total, ok = pct >= REG.aprobacion;
+  const now = new Date();
+  const registro = Object.assign({ fecha: now.toISOString(), fechaLocal: now.toLocaleString('es-CO'), intento,
+    puntaje: score, total, porcentaje: Math.round(pct * 100), resultado: ok ? 'Aprobado' : 'No aprobado',
+    duracionSeg: Math.round((Date.now() - qStart) / 1000), respuestas: resp }, persona);
+  qOpen('<p class="who">' + esc(persona.nombre) + ' · C.C. ' + esc(persona.cedula) + '</p><div class="qnum">RESULTADO</div><div class="score">' + score + '/' + total + '</div>' +
+    '<p class="qtext">' + (ok ? '¡Aprobado! Estás listo para usar ARES.' : 'No aprobado. Repasa los módulos y vuelve a intentarlo.') + '</p>' +
+    '<div class="status" id="sendStatus">Enviando resultados…</div>' +
+    '<div class="qact"><button class="big" type="button" id="qAgain">Repetir evaluación</button><button class="big sec" type="button" id="qOther">Registrar otra persona</button><button class="big ghost" type="button" id="qHome">Volver al inicio</button></div>', ok ? 'cheer' : 'think');
+  $('qAgain').addEventListener('click', startQuiz);
+  $('qOther').addEventListener('click', () => { persona = null; showRegistro(); });
+  $('qHome').addEventListener('click', showMenu);
+  enviar(registro);
+}
+
+/* ---------- envío de resultados a la base de datos (función de Vercel) ---------- */
+const pendientes = () => { try { return JSON.parse(localStorage.getItem(PKEY) || '[]'); } catch (e) { return []; } };
+const guardarPend = (l) => { try { localStorage.setItem(PKEY, JSON.stringify(l)); } catch (e) {} };
+async function post(reg) {
+  const r = await fetch(REG.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reg) });
+  let j = {}; try { j = await r.json(); } catch (e) {}
+  if (!r.ok || !j.ok) { const err = new Error(j.error || ('Error ' + r.status)); err.status = r.status; throw err; }
+  return j;
+}
+function setStatus(cls, txt) { const s = $('sendStatus'); if (s) { s.className = 'status ' + cls; s.textContent = txt; } }
+async function enviar(reg) {
+  if (!REG.url) { setStatus('bad', 'El envío de resultados no está configurado (CONFIG.registro.url).'); return; }
+  try { await post(reg); setStatus('ok', 'Resultados guardados correctamente.'); flushPend(); }
+  catch (e) {
+    if (e.status === 400) { setStatus('bad', 'No se pudo guardar: ' + e.message + '.'); return; }
+    const l = pendientes(); l.push(reg); guardarPend(l);
+    setStatus('bad', 'No se pudo enviar en este momento. El resultado quedó guardado en este equipo y se enviará solo la próxima vez que se abra la capacitación con internet.');
+  }
+}
+async function flushPend() {
+  if (!REG.url) return;
+  const l = pendientes(); if (!l.length) return;
+  const rest = [];
+  for (const r of l) { try { await post(r); } catch (e) { if (e.status !== 400) rest.push(r); } }
+  guardarPend(rest);
+}
+flushPend();
+
+/* ---------- controles ---------- */
+$('bPlay').addEventListener('click', () => { if (view === 'menu') return go(0, true); playing ? pause() : play(); });
+$('bNext').addEventListener('click', () => { if (view === 'menu') return go(0, true); if (idx < B.length - 1) go(idx + 1, true); else showQuiz(); });
+$('bPrev').addEventListener('click', () => { if (idx > 0) go(idx - 1, true); });
+$('bAgain').addEventListener('click', () => { if (view === 'block') go(idx, true); });
+$('bHome').addEventListener('click', showMenu);
+$('bQuiz').addEventListener('click', showQuiz);
+document.addEventListener('keydown', (e) => { if (view === 'quiz' || e.target.closest('input,select,textarea,button.opt')) return; if (e.key === ' ' && view === 'block') { e.preventDefault(); playing ? pause() : play(); } if (e.key === 'ArrowRight') $('bNext').click(); if (e.key === 'ArrowLeft') $('bPrev').click(); });
+
+/* ---------- modo medir (#medir): clic en una captura muestra coordenadas para CONFIG.pantallas ---------- */
+if (location.hash === '#medir') {
+  let pts = [];
+  const tip = H('<div style="position:fixed;left:16px;bottom:16px;z-index:20;background:var(--ink);color:#fff;padding:10px 14px;border-radius:10px;font:14px ui-monospace,monospace;max-width:90%">Modo medir: pause el bloque y haga clic en la esquina superior izquierda y luego en la inferior derecha de un campo.</div>');
+  document.body.append(tip);
+  stage.addEventListener('click', (e) => {
+    const img = e.target.closest('.medible') && e.target.closest('.medible').querySelector('img');
+    if (!img || e.target.tagName !== 'IMG') return;
+    pause();
+    const x = Math.round(e.offsetX / img.offsetWidth * img.naturalWidth), y = Math.round(e.offsetY / img.offsetHeight * img.naturalHeight);
+    pts.push([x, y]);
+    if (pts.length === 2) { const z = [Math.min(pts[0][1], pts[1][1]), Math.max(pts[0][1], pts[1][1]), Math.min(pts[0][0], pts[1][0]), Math.max(pts[0][0], pts[1][0])]; tip.textContent = 'zona: [' + z.join(',') + ']   (imagen de ' + img.naturalWidth + 'x' + img.naturalHeight + ')'; pts = []; }
+    else tip.textContent = 'Punto 1: x=' + x + ' y=' + y + '. Ahora haga clic en la esquina inferior derecha.';
+  });
+}
+
+/* ---------- celular: aviso para girar y pantalla completa ---------- */
+const rot = $('rotate'), mqPort = matchMedia('(orientation: portrait) and (max-width: 760px)');
+let rotDismissed = false;
+$('rotImg').src = src(CONFIG.mascota.point);
+const canFull = !!(document.documentElement.requestFullscreen && document.fullscreenEnabled);
+async function goFull() {
+  try { await document.documentElement.requestFullscreen(); } catch (e) { return; }
+  try { await screen.orientation.lock('landscape'); } catch (e) {}
+}
+if (canFull) { $('rFull').hidden = false; $('bFull2').hidden = false; }
+function updRotate() { rot.hidden = !(mqPort.matches && view !== 'quiz' && !rotDismissed && !document.fullscreenElement); }
+$('rFull').addEventListener('click', async () => { await goFull(); updRotate(); });
+$('bFull2').addEventListener('click', () => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); else goFull(); });
+$('rStay').addEventListener('click', () => { rotDismissed = true; updRotate(); });
+$('bHome2').addEventListener('click', showMenu);
+(mqPort.addEventListener ? mqPort.addEventListener('change', updRotate) : mqPort.addListener(updRotate));
+document.addEventListener('fullscreenchange', updRotate);
+setInterval(updRotate, 600); // también refleja los cambios de vista (capacitación / evaluación)
+
+showMenu();
+requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>

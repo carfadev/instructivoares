@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Resultados evaluación ARES</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="lib/xlsx.full.min.js"></script>
+<style>
+/* Panel del administrador: resumen arriba, filtros, tabla con detalle por persona. */
+:root{
+  --ground:#EEF3F8; --navy:#1C2E4F; --ink:#14202E; --accent:#EE7A1E; --paper:#FFFFFF; --line:#D5DEE9;
+  --muted:#5B6B80; --ok:#1F8A5B; --bad:#C2412D; --soft:#F6F9FC;
+  --font:"Nunito","Segoe UI",system-ui,sans-serif; color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;min-height:100%}
+body{background:var(--ground);color:var(--ink);font-family:var(--font);font-size:15px}
+button,input,select{font:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:18px}
+header{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{margin-right:auto;line-height:1.15}
+.brand b{display:block;font-size:12px;letter-spacing:.14em;color:var(--accent);font-weight:900}
+.brand h1{margin:0;font-size:24px;font-weight:900;color:var(--navy)}
+.btn{border:0;border-radius:10px;padding:10px 16px;font-weight:800;background:var(--navy);color:#fff}
+.btn.acc{background:var(--accent)}
+.btn.ghost{background:var(--paper);color:var(--navy);border:1.5px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:default}
+.card{background:var(--paper);border-radius:16px;box-shadow:0 6px 20px rgba(20,32,46,.07);padding:18px}
+/* acceso */
+.login{max-width:420px;margin:12vh auto 0;display:flex;flex-direction:column;gap:14px}
+.login h2{margin:0;font-size:22px;color:var(--navy)}
+.login input{padding:12px 14px;border:2px solid var(--line);border-radius:10px;font-size:17px}
+.err{color:var(--bad);font-weight:700;margin:0;min-height:1.2em}
+.note{color:var(--muted);font-size:14px;margin:0;line-height:1.5}
+/* resumen */
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.tile{padding:16px 18px}
+.tile small{display:block;font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.tile strong{display:block;font-size:34px;font-weight:900;color:var(--navy);font-variant-numeric:tabular-nums;margin-top:4px}
+.tile span{font-size:13px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px}
+.card h3{margin:0 0 12px;font-size:15px;color:var(--navy);font-weight:900}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:38px minmax(0,1fr) 46px;gap:10px;align-items:center;font-size:13px}
+.bar .t{height:12px;border-radius:6px;background:var(--soft);overflow:hidden}
+.bar .t i{display:block;height:100%;border-radius:6px;background:var(--navy)}
+.bar .t i.low{background:var(--bad)}
+.bar b{font-variant-numeric:tabular-nums;text-align:right}
+.bar .q{grid-column:2/4;color:var(--muted);font-size:12px;margin-top:-4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* filtros */
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.filters input,.filters select{padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper)}
+.filters input{flex:1;min-width:200px}
+.count{color:var(--muted);font-size:14px;margin-left:auto}
+/* tabla */
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:900px}
+th{text-align:left;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px;border-bottom:2px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+th[aria-sort="ascending"]::after{content:" ▲"} th[aria-sort="descending"]::after{content:" ▼"}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.row:hover td{background:var(--soft)}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:800}
+.pill.ok{background:color-mix(in srgb,var(--ok) 14%,#fff);color:var(--ok)}
+.pill.bad{background:color-mix(in srgb,var(--bad) 12%,#fff);color:var(--bad)}
+.lnk{border:0;background:none;color:var(--navy);font-weight:800;text-decoration:underline;padding:4px}
+.lnk.del{color:var(--bad)}
+.detail td{background:var(--soft)}
+.answers{display:grid;gap:6px;padding:4px 0}
+.ans{display:grid;grid-template-columns:26px minmax(0,1fr);gap:8px;font-size:14px}
+.ans .m{font-weight:900}
+.ans .m.ok{color:var(--ok)} .ans .m.bad{color:var(--bad)}
+.ans small{display:block;color:var(--muted)}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+.banner{padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--bad) 10%,#fff);color:var(--bad);font-weight:700}
+.dlg{position:fixed;inset:0;background:rgba(20,32,46,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:5}
+.dlg.open{display:flex}
+.dlg .card{max-width:420px;display:flex;flex-direction:column;gap:14px}
+.dlg .row{display:flex;gap:10px;justify-content:flex-end}
+@media (max-width:860px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><b>SEGURIDAD REPREMUNDO</b><h1>Resultados de la evaluación ARES</h1></div>
+    <button class="btn ghost" id="bRefresh" type="button" hidden>Actualizar</button>
+    <button class="btn acc" id="bExcel" type="button" hidden>Descargar Excel</button>
+    <button class="btn ghost" id="bOut" type="button" hidden>Salir</button>
+  </header>
+
+  <form class="card login" id="login">
+    <h2>Acceso de administrador</h2>
+    <p class="note">Ingrese la clave del panel de resultados.</p>
+    <label for="pw" class="note">Clave</label>
+    <input id="pw" type="password" autocomplete="current-password" required>
+    <p class="err" id="loginErr" role="alert"></p>
+    <button class="btn acc" type="submit">Entrar</button>
+  </form>
+
+  <main id="app" hidden>
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="tiles">
+        <div class="card tile"><small>Evaluaciones</small><strong id="tTotal">0</strong><span id="tPeople">0 personas</span></div>
+        <div class="card tile"><small>Aprobación</small><strong id="tPass">0 %</strong><span id="tPassN">0 aprobadas</span></div>
+        <div class="card tile"><small>Puntaje promedio</small><strong id="tAvg">0 %</strong><span>de respuestas correctas</span></div>
+        <div class="card tile"><small>Última evaluación</small><strong id="tLast" style="font-size:20px">—</strong><span id="tLastWho"></span></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>Aciertos por pregunta</h3><div class="bars" id="qBars"></div></div>
+        <div class="card"><h3>Por sede</h3><div class="bars" id="sBars"></div></div>
+      </div>
+      <div class="card">
+        <div class="filters">
+          <input id="fText" type="search" placeholder="Buscar por nombre o cédula" aria-label="Buscar por nombre o cédula">
+          <select id="fSede" aria-label="Filtrar por sede"><option value="">Todas las sedes</option></select>
+          <select id="fRes" aria-label="Filtrar por resultado"><option value="">Todos los resultados</option><option>Aprobado</option><option>No aprobado</option></select>
+          <span class="count" id="count"></span>
+        </div>
+        <div class="tablewrap" style="margin-top:12px">
+          <table>
+            <thead><tr>
+              <th data-k="fecha" aria-sort="descending">Fecha</th><th data-k="nombre">Nombre</th><th data-k="cedula">Cédula</th>
+              <th data-k="sede">Sede</th><th data-k="cargo">Cargo</th><th data-k="turno">Turno</th><th data-k="intento">Intento</th>
+              <th data-k="porcentaje">Puntaje</th><th data-k="resultado">Resultado</th><th>Acciones</th>
+            </tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="dlg" id="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgT">
+  <div class="card"><h3 id="dlgT">Eliminar registro</h3><p class="note" id="dlgMsg"></p>
+    <div class="row"><button class="btn ghost" type="button" id="dlgNo">Cancelar</button><button class="btn" style="background:var(--bad)" type="button" id="dlgYes">Eliminar</button></div></div>
+</div>
+
+<script>
+(() => {
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }); };
+let clave = '', data = [], sortK = 'fecha', sortDir = -1, open = new Set(), delId = null;
+try { clave = sessionStorage.getItem('ares-admin') || ''; } catch (e) {}
+
+async function api(method, q) {
+  const r = await fetch('/api/resultados' + (q || ''), { method, headers: { 'x-clave': clave } });
+  let j = {}; try { j = await r.json(); } catch (e) {}
+  if (!r.ok || !j.ok) { const err = new Error(j.error || ('Error ' + r.status)); err.status = r.status; throw err; }
+  return j;
+}
+async function load() {
+  try {
+    const j = await api('GET');
+    data = j.resultados;
+    $('login').hidden = true; $('app').hidden = false; ['bRefresh', 'bExcel', 'bOut'].forEach((id) => { $(id).hidden = false; });
+    try { sessionStorage.setItem('ares-admin', clave); } catch (e) {}
+    fillSedes(); render();
+  } catch (e) {
+    $('login').hidden = false; $('app').hidden = true;
+    $('loginErr').textContent = e.status === 401 ? 'Clave incorrecta.' : e.message;
+  }
+}
+$('login').addEventListener('submit', (e) => { e.preventDefault(); clave = $('pw').value; $('loginErr').textContent = ''; load(); });
+$('bRefresh').addEventListener('click', load);
+$('bOut').addEventListener('click', () => { clave = ''; try { sessionStorage.removeItem('ares-admin'); } catch (e) {} location.reload(); });
+
+function fillSedes() {
+  const cur = $('fSede').value, sedes = [...new Set(data.map((d) => d.sede).filter(Boolean))].sort();
+  $('fSede').innerHTML = '<option value="">Todas las sedes</option>' + sedes.map((s) => '<option' + (s === cur ? ' selected' : '') + '>' + esc(s) + '</option>').join('');
+}
+function filtered() {
+  const q = $('fText').value.trim().toLowerCase(), s = $('fSede').value, r = $('fRes').value;
+  return data.filter((d) => (!q || (d.nombre || '').toLowerCase().includes(q) || String(d.cedula).includes(q)) && (!s || d.sede === s) && (!r || d.resultado === r))
+    .sort((a, b) => { const x = a[sortK], y = b[sortK]; return (typeof x === 'number' ? x - y : String(x || '').localeCompare(String(y || ''), 'es')) * sortDir; });
+}
+function bars(el, items) {
+  el.innerHTML = items.length ? items.map((it) => '<div class="bar"><span>' + esc(it.label) + '</span><div class="t"><i class="' + (it.p < 0.6 ? 'low' : '') + '" style="width:' + Math.round(it.p * 100) + '%"></i></div><b>' + Math.round(it.p * 100) + ' %</b>' + (it.sub ? '<div class="q" title="' + esc(it.sub) + '">' + esc(it.sub) + '</div>' : '') + '</div>').join('') : '<p class="note">Aún no hay datos.</p>';
+}
+function render() {
+  const list = filtered();
+  // resumen (sobre lo filtrado)
+  const n = list.length, pass = list.filter((d) => d.resultado === 'Aprobado').length;
+  $('tTotal').textContent = n;
+  $('tPeople').textContent = (function (k) { return k + (k === 1 ? ' persona' : ' personas'); })(new Set(list.map((d) => d.cedula)).size);
+  $('tPass').textContent = n ? Math.round(pass / n * 100) + ' %' : '0 %';
+  $('tPassN').textContent = pass + (pass === 1 ? ' aprobada' : ' aprobadas');
+  $('tAvg').textContent = n ? Math.round(list.reduce((a, d) => a + (d.porcentaje || 0), 0) / n) + ' %' : '0 %';
+  const last = [...list].sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)))[0];
+  $('tLast').textContent = last ? fmt(last.fecha) : '—'; $('tLastWho').textContent = last ? last.nombre : '';
+  // aciertos por pregunta
+  const qs = {};
+  list.forEach((d) => (d.respuestas || []).forEach((r) => { const k = r.n; qs[k] = qs[k] || { ok: 0, all: 0, q: r.pregunta }; qs[k].all++; if (r.correcta) qs[k].ok++; }));
+  bars($('qBars'), Object.keys(qs).sort((a, b) => a - b).map((k) => ({ label: 'P' + k, p: qs[k].ok / qs[k].all, sub: qs[k].q })));
+  const ss = {};
+  list.forEach((d) => { const k = d.sede || 'Sin sede'; ss[k] = ss[k] || { ok: 0, all: 0 }; ss[k].all++; if (d.resultado === 'Aprobado') ss[k].ok++; });
+  bars($('sBars'), Object.keys(ss).sort().map((k) => ({ label: '', p: ss[k].ok / ss[k].all, sub: k + ' · ' + ss[k].ok + ' de ' + ss[k].all + ' aprobados' })));
+  // tabla
+  $('count').textContent = n + ' de ' + data.length + ' registros';
+  document.querySelectorAll('th[data-k]').forEach((th) => th.setAttribute('aria-sort', th.dataset.k === sortK ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'));
+  $('rows').innerHTML = n ? list.map((d) => {
+    const ok = d.resultado === 'Aprobado';
+    let h = '<tr class="row"><td class="num">' + esc(fmt(d.fecha)) + '</td><td>' + esc(d.nombre) + '</td><td class="num">' + esc(d.cedula) + '</td><td>' + esc(d.sede) + '</td><td>' + esc(d.cargo) + '</td><td>' + esc(d.turno) + '</td><td class="num">' + esc(d.intento) + '</td>' +
+      '<td class="num">' + esc(d.puntaje) + '/' + esc(d.total) + ' (' + esc(d.porcentaje) + ' %)</td><td><span class="pill ' + (ok ? 'ok' : 'bad') + '">' + esc(d.resultado) + '</span></td>' +
+      '<td style="white-space:nowrap"><button class="lnk" type="button" data-ver="' + esc(d.id) + '" aria-expanded="' + open.has(d.id) + '">' + (open.has(d.id) ? 'Ocultar' : 'Ver respuestas') + '</button><button class="lnk del" type="button" data-del="' + esc(d.id) + '">Eliminar</button></td></tr>';
+    if (open.has(d.id)) h += '<tr class="detail"><td colspan="10"><div class="answers">' + (d.respuestas || []).map((r) => '<div class="ans"><span class="m ' + (r.correcta ? 'ok' : 'bad') + '">' + (r.correcta ? '✔' : '✘') + '</span><div><b>P' + esc(r.n) + '.</b> ' + esc(r.pregunta) + '<small>Respondió: ' + esc(r.elegida) + '</small></div></div>').join('') + '<p class="note">Duración: ' + esc(d.duracionSeg) + ' s</p></div></td></tr>';
+    return h;
+  }).join('') : '<tr><td colspan="10" class="empty">' + (data.length ? 'Ningún registro coincide con los filtros.' : 'Todavía no hay evaluaciones registradas.') + '</td></tr>';
+}
+['fText', 'fSede', 'fRes'].forEach((id) => $(id).addEventListener('input', render));
+document.querySelectorAll('th[data-k]').forEach((th) => th.addEventListener('click', () => { const k = th.dataset.k; sortDir = sortK === k ? -sortDir : (k === 'fecha' ? -1 : 1); sortK = k; render(); }));
+$('rows').addEventListener('click', (e) => {
+  const v = e.target.closest('[data-ver]'), d = e.target.closest('[data-del]');
+  if (v) { const id = v.dataset.ver; open.has(id) ? open.delete(id) : open.add(id); render(); }
+  if (d) { delId = d.dataset.del; const r = data.find((x) => x.id === delId); $('dlgMsg').textContent = 'Se eliminará la evaluación de ' + (r ? r.nombre + ' (' + fmt(r.fecha) + ')' : '') + '. Esta acción no se puede deshacer.'; $('dlg').classList.add('open'); $('dlgNo').focus(); }
+});
+$('dlgNo').addEventListener('click', () => $('dlg').classList.remove('open'));
+$('dlgYes').addEventListener('click', async () => {
+  try { await api('DELETE', '?id=' + encodeURIComponent(delId)); data = data.filter((x) => x.id !== delId); render(); } catch (e) { alertBox(e.message); }
+  $('dlg').classList.remove('open');
+});
+function alertBox(msg) { const b = document.createElement('div'); b.className = 'banner'; b.textContent = msg; $('app').prepend(b); setTimeout(() => b.remove(), 6000); }
+
+// Excel con dos hojas: Resultados (una fila por evaluación) y Detalle (una fila por pregunta)
+$('bExcel').addEventListener('click', () => {
+  const list = filtered(), maxQ = Math.max(0, ...list.map((d) => (d.respuestas || []).length));
+  const res = list.map((d) => { const o = { 'Fecha': fmt(d.fecha), 'Nombre completo': d.nombre, 'Cédula': String(d.cedula), 'Sede / bodega': d.sede, 'Cargo': d.cargo, 'Turno': d.turno, 'Intento': d.intento, 'Puntaje': d.puntaje, 'Total': d.total, '%': d.porcentaje, 'Resultado': d.resultado, 'Duración (s)': d.duracionSeg };
+    for (let i = 0; i < maxQ; i++) { const r = (d.respuestas || [])[i]; o['P' + (i + 1)] = r ? r.elegida + (r.correcta ? ' ✔' : ' ✘') : ''; } return o; });
+  const det = []; list.forEach((d) => (d.respuestas || []).forEach((r) => det.push({ 'Fecha': fmt(d.fecha), 'Cédula': String(d.cedula), 'Nombre completo': d.nombre, 'Sede / bodega': d.sede, 'Intento': d.intento, 'N.º': r.n, 'Pregunta': r.pregunta, 'Respuesta elegida': r.elegida, '¿Correcta?': r.correcta ? 'Sí' : 'No' })));
+  const name = 'resultados-evaluacion-ares-' + new Date().toISOString().slice(0, 10);
+  if (window.XLSX) {
+    const wb = XLSX.utils.book_new();
+    const s1 = XLSX.utils.json_to_sheet(res); s1['!cols'] = Object.keys(res[0] || { a: 1 }).map((k) => ({ wch: Math.max(10, Math.min(40, k.length + 6)) }));
+    XLSX.utils.book_append_sheet(wb, s1, 'Resultados');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(det), 'Detalle');
+    XLSX.writeFile(wb, name + '.xlsx');
+  } else {
+    const cols = Object.keys(res[0] || {}); const csv = '﻿' + [cols.join(';')].concat(res.map((o) => cols.map((c) => '"' + String(o[c]).replace(/"/g, '""') + '"').join(';'))).join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = name + '.csv'; a.click();
+  }
+});
+
+if (clave) load();
+})();
+</script>
+</body>
+</html>
